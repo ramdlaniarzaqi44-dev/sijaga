@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIJAGA Pro - Realtime Database</title>
+    <title>SIJAGA Pro - Realtime Cloud</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,12 +24,11 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- KONFIGURASI FIREBASE ---
-        // Menggunakan config yang Anda berikan, dengan fallback ke environment jika tersedia
-        const userConfig = {
+        // --- KONFIGURASI FIREBASE ANDA ---
+        const firebaseConfig = {
             apiKey: "AIzaSyBrKxKE_SsTEaCzOGY6mNUfTnnTGBhDowQ",
             authDomain: "sijaga-pro.firebaseapp.com",
             projectId: "sijaga-pro",
@@ -38,9 +37,8 @@
             appId: "1:570764007648:web:6e3ec32d3dd99c8ee29885"
         };
 
-        // Logika untuk memilih config yang tepat (Environment vs User)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userConfig;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sijaga-default';
+        // Menggunakan Project ID sebagai identifier path di database
+        const appId = 'sijaga-pro';
 
         // Inisialisasi Firebase
         const app = initializeApp(firebaseConfig);
@@ -48,7 +46,7 @@
         const db = getFirestore(app);
 
         // Expose ke window agar bisa diakses React
-        window.firebaseData = { auth, db, appId, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, setDoc, onSnapshot, collection };
+        window.firebaseData = { auth, db, appId, signInAnonymously, onAuthStateChanged, doc, setDoc, onSnapshot, collection };
     </script>
 
     <script>
@@ -104,6 +102,15 @@
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
+        }
+        .online-dot {
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
     </style>
 </head>
@@ -492,6 +499,12 @@
                         </div>
 
                         <div className="p-3 bg-slate-950 border-t border-slate-800 shrink-0">
+                            {/* NEW: Online Indicator in Sidebar */}
+                            <div className={`flex items-center gap-2 mb-3 px-2 py-1.5 rounded bg-emerald-900/30 border border-emerald-900/50 transition-all duration-300 ${isExpanded ? '' : 'justify-center'}`}>
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 online-dot shrink-0"></div>
+                                <span className={`text-[10px] font-bold text-emerald-400 uppercase tracking-wider transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Online</span>
+                            </div>
+
                             <div className={`flex items-center gap-3 mb-2 p-2 rounded-lg bg-slate-900/50 transition-all duration-300 ${isExpanded ? '' : 'justify-center'}`}>
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-xs font-bold uppercase shadow-md shrink-0">
                                     {user.role.substring(0, 2)}
@@ -2179,10 +2192,10 @@
                         if (docSnap.exists()) {
                             setData(docSnap.data().items);
                         } else {
-                            // If doc doesn't exist, we don't overwrite local state yet to avoid clearing UI 
-                            // But in a real app you might want to initialize firestore
-                            setLoading(false);
+                            // SEED DATA JIKA KOSONG: Memastikan online & realtime
+                            setDoc(docRef, { items: initialValue }, { merge: true });
                         }
+                        setLoading(false);
                     }, (err) => console.error("Firestore Error:", err));
 
                     return () => unsubscribe();
@@ -2202,7 +2215,7 @@
                     }
                 };
 
-                return [data, updateData];
+                return [data, updateData, loading];
             };
 
             // Initialize Auth once
@@ -2210,10 +2223,11 @@
                 const { auth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = window.firebaseData;
                 
                 const initAuth = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
+                    try {
+                        // Gunakan sign in anonim langsung untuk project custom
                         await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Auth Error:", error);
                     }
                 };
                 initAuth();
@@ -2408,6 +2422,7 @@
                                     showToast={showToast} 
                                 />
                             )}
+                            {/* NEW: Komponen Jadwal Guru sekarang menampilkan jadwal lengkap dari data admin */}
                             {activeTab === 'jadwal' && <JadwalGuru user={user} schedules={schedules} />}
                         </main>
                     </div>
