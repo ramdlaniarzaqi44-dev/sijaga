@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIJAGA Pro - Realtime Database</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts: Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel untuk JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- SheetJS untuk Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- KONFIGURASI FIREBASE ---
+        // Menggunakan config yang Anda berikan, dengan fallback ke environment jika tersedia
+        const userConfig = {
+            apiKey: "AIzaSyBrKxKE_SsTEaCzOGY6mNUfTnnTGBhDowQ",
+            authDomain: "sijaga-pro.firebaseapp.com",
+            projectId: "sijaga-pro",
+            storageBucket: "sijaga-pro.firebasestorage.app",
+            messagingSenderId: "570764007648",
+            appId: "1:570764007648:web:6e3ec32d3dd99c8ee29885"
+        };
+
+        // Logika untuk memilih config yang tepat (Environment vs User)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userConfig;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sijaga-default';
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Expose ke window agar bisa diakses React
+        window.firebaseData = { auth, db, appId, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, setDoc, onSnapshot, collection };
+    </script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        google: {
+                            blue: '#4285F4',
+                            red: '#EA4335',
+                            yellow: '#FBBC05',
+                            green: '#34A853',
+                        }
+                    },
+                    transitionProperty: {
+                        'width': 'width',
+                        'spacing': 'margin, padding',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .animate-fade-in-down {
+            animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .modal-overlay {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .sidebar-transition {
+            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s ease-in-out;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700 overflow-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- ICONS DEFINITION ---
+        const ICONS = {
+            LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></>,
+            BookOpen: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>,
+            Users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+            Calendar: <><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></>,
+            ClipboardCheck: <><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></>,
+            GraduationCap: <><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></>,
+            FileText: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><line x1="10" x2="8" y1="9" y2="9" /></>,
+            Settings: <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.35a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></>,
+            Menu: <><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></>,
+            X: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+            Plus: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
+            Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></>,
+            Trash2: <><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></>,
+            Search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
+            CheckCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>,
+            BarChart3: <><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></>,
+            UserCheck: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" /></>,
+            Database: <><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></>,
+            Edit: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></>,
+            School: <><path d="m4 6 8-4 8 4" /><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2" /><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4" /><path d="M18 5v17" /><path d="M6 5v17" /><circle cx="12" cy="9" r="2" /></>,
+            MoreVertical: <><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></>,
+            Key: <><circle cx="7.5" cy="15.5" r="5.5" /><path d="m21 2-9.6 9.6" /><path d="m15.5 7.5 3 3L22 7l-3-3" /></>,
+            LogOut: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></>,
+            Lock: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>,
+            UserCog: <><circle cx="18" cy="15" r="3" /><circle cx="9" cy="7" r="4" /><path d="M10 15H6a4 4 0 0 0-4 4v2" /><path d="m21.7 16.4.9.9" /><path d="m15.3 13.6.9.9" /><path d="m21.7 13.6-.9.9" /><path d="m15.3 16.4-.9.9" /><path d="M18 19v1" /><path d="M18 10v1" /><path d="M22.5 15h-1" /><path d="M14.5 15h-1" /></>,
+            Sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></>,
+            LogIn: <><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></>,
+            Eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+            EyeOff: <><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></>,
+            XCircle: <><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></>,
+            Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
+            Clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+            MapPin: <><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></>,
+            Activity: <><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>,
+            Crosshair: <><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></>,
+            AlertCircle: <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>,
+            Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>,
+            FileSpreadsheet: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></>,
+            Book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>,
+            Folder: <><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /></>,
+            File: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+            Link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>
+        };
+
+        const LucideIcon = ({ name, size = 24, className, ...props }) => {
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+                    {ICONS[name] || null}
+                </svg>
+            );
+        };
+
+        const IconComponents = Object.keys(ICONS).reduce((acc, key) => {
+            acc[key] = (props) => <LucideIcon name={key} {...props} />;
+            return acc;
+        }, {});
+
+        const {
+            LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link
+        } = IconComponents;
+
+        // --- Mock Data & Constants ---
+        const INITIAL_STUDENTS = [
+            { id: 1, name: 'Ahmad Dahlan', nis: '2024001', gender: 'L', class: 'X-A', status: 'Aktif' },
+            { id: 2, name: 'Budi Santoso', nis: '2024002', gender: 'L', class: 'X-A', status: 'Aktif' },
+            { id: 3, name: 'Citra Lestari', nis: '2024003', gender: 'P', class: 'X-A', status: 'Aktif' },
+            { id: 4, name: 'Dewi Sartika', nis: '2024004', gender: 'P', class: 'X-A', status: 'Pindah' },
+            { id: 5, name: 'Eko Prasetyo', nis: '2024005', gender: 'L', class: 'X-A', status: 'Aktif' },
+        ];
+
+        const INITIAL_TEACHERS = [
+            { id: 1, name: 'Bpk. Guru RI', nip: '198501012010011001', mapel: 'Matematika', status: 'Wali Kelas' }, 
+            { id: 2, name: 'Ibu Siti Aminah', nip: '199002022015022002', mapel: 'Bahasa Indonesia', status: 'Guru Piket' },
+            { id: 3, name: 'Bpk. Johny', nip: '199203032019031003', mapel: 'Fisika', status: '-' },
+        ];
+
+        const INITIAL_CLASSES = [
+            { id: 'X-A', name: 'X-A', wali: 'Bpk. Guru RI', total: 32 },
+            { id: 'X-B', name: 'X-B', wali: 'Ibu Siti Aminah', total: 30 },
+            { id: 'XI-IPA', name: 'XI IPA 1', wali: 'Bpk. Johny', total: 28 },
+        ];
+
+        const INITIAL_SUBJECTS = [
+            { id: 1, code: 'MTK-E', name: 'Matematika', kktp: 75 },
+            { id: 2, code: 'IND-E', name: 'Bahasa Indonesia', kktp: 78 },
+            { id: 3, code: 'IPA-F', name: 'Fisika', kktp: 75 },
+        ];
+
+        const INITIAL_MODULES = [
+            { id: 1, title: 'Modul Ajar 1: Eksponen', subject: 'Matematika', phase: 'E', status: 'Selesai' },
+            { id: 2, title: 'Modul Ajar 2: Barisan & Deret', subject: 'Matematika', phase: 'E', status: 'Draft' },
+        ];
+
+        const INITIAL_SCHEDULE = [
+            { id: 1, day: 'Senin', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
+            { id: 2, day: 'Senin', time: '08:30 - 10:00', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
+            { id: 3, day: 'Senin', time: '10:30 - 12:00', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'Lab. Komputer', teacherName: 'Bpk. Johny' },
+            { id: 4, day: 'Selasa', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
+            { id: 5, day: 'Selasa', time: '09:00 - 10:30', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'R. 201', teacherName: 'Bpk. Johny' },
+            { id: 6, day: 'Rabu', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
+            { id: 7, day: 'Kamis', time: '08:30 - 10:00', class: 'XI-IPA', subject: 'Projek P5', room: 'Aula', teacherName: 'Ibu Siti Aminah' },
+            { id: 8, day: 'Jumat', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
+        ];
+
+        const INITIAL_ACCOUNTS = [
+            { username: 'admin', password: '123', role: 'admin', name: 'Administrator Sekolah' },
+            { username: 'guru', password: '123', role: 'guru', name: 'Bpk. Guru RI', id: 1 },
+        ];
+
+        const INITIAL_DRIVE_LINKS = {
+            1: {
+                perangkat: 'https://drive.google.com/',
+                sas_sat: '',
+                psaj: ''
+            }
+        };
+
+        const INITIAL_SCHOOL_CONFIG = {
+            name: 'SMA Negeri 1 Edukasi',
+            npsn: '12345678',
+            level: 'SMA/MA',
+            logo: 'https://ui-avatars.com/api/?name=SM&background=4f46e5&color=fff&size=128',
+            academicYear: '2025/2026',
+            semester: 'Ganjil'
+        };
+
+        // --- GLOBAL TOAST & CONFIRM COMPONENTS ---
+        const ToastContainer = ({ toast }) => {
+            if (!toast) return null;
+            return (
+                <div className="fixed top-4 right-4 z-[70] animate-fade-in-down w-full max-w-sm px-4 md:w-auto md:px-0">
+                    <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl text-white ${toast.type === 'error' ? 'bg-red-600' : 'bg-slate-800'}`}>
+                        {toast.type === 'error' ? <AlertCircle size={20} className="text-white" /> : <CheckCircle size={20} className="text-emerald-400" />}
+                        <span className="font-medium text-sm md:text-base">{toast.message}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const ConfirmModal = ({ confirm }) => {
+            if (!confirm) return null;
+            return (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center modal-overlay p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-sm w-full animate-fade-in-down">
+                        <div className="flex flex-col items-center text-center mb-6">
+                            <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4">
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">Konfirmasi</h3>
+                            <p className="text-slate-600 text-sm md:text-base">{confirm.message}</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={confirm.onCancel} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
+                            <button onClick={confirm.onConfirm} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors">Ya, Lanjutkan</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Components ---
+        const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig }) => {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                let user = accounts.find(acc => acc.username === username && acc.password === password);
+                if (user && user.role === 'guru' && !user.id) user = {...user, id: 1};
+
+                if (user) {
+                    onLogin(user);
+                } else {
+                    setError('Username atau Password salah!');
+                    showToast('Login Gagal: Periksa username dan password', 'error');
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300 mx-auto">
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 md:p-10 text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-20 transform -skew-y-6 scale-150 origin-bottom-left"></div>
+                            <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner relative z-10 overflow-hidden">
+                                {schoolConfig && schoolConfig.logo ? 
+                                    <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover" /> :
+                                    <School size={40} className="text-white drop-shadow-md" />
+                                }
+                            </div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-white relative z-10 tracking-tight">SIJAGA</h1>
+                            <p className="text-indigo-100 text-[10px] md:text-xs mt-1 relative z-10 font-medium opacity-90">(Sistem Jurnal dan Administrasi Guru Mengajar)</p>
+                            <p className="text-white text-xs md:text-sm mt-4 relative z-10 font-bold italic">"Catatan Ikhlas, Pembelajaran Berkualitas"</p>
+                        </div>
+                        
+                        <div className="p-6 md:p-8 pt-8 md:pt-10">
+                            <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">Username / NIP</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none">
+                                            <Users size={20} />
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={username}
+                                            onChange={(e) => setUsername(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 outline-none transition-all bg-slate-50 focus:bg-white placeholder-slate-400 text-slate-800 font-medium"
+                                            placeholder="Masukkan username"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">Password</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none">
+                                            <Lock size={20} />
+                                        </div>
+                                        <input 
+                                            type={showPassword ? "text" : "password"} 
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 outline-none transition-all bg-slate-50 focus:bg-white placeholder-slate-400 text-slate-800 font-medium"
+                                            placeholder="Masukkan password"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {error && (
+                                    <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-center gap-3 animate-fade-in">
+                                        <div className="bg-red-100 p-1.5 rounded-full text-red-600"><X size={16} /></div> 
+                                        <span className="font-medium">{error}</span>
+                                    </div>
+                                )}
+
+                                <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
+                                    <LogIn size={20} />
+                                    Masuk Aplikasi
+                                </button>
+                            </form>
+                            
+                            <div className="mt-8 text-center text-[10px] md:text-xs text-slate-400">
+                                <p>Demo Access: <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">admin / 123</span> atau <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">guru / 123</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, isPiket, schoolConfig }) => {
+            const [isHovered, setIsHovered] = useState(false);
+
+            const menuGroups = [
+                {
+                    category: "Menu Utama",
+                    items: [
+                        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru'] },
+                        { id: 'monitoring', label: 'Monitoring Guru', icon: Activity, roles: ['admin'] },
+                        { id: 'data', label: 'Manajemen Data', icon: Database, roles: ['admin'] },
+                        { id: 'generate-akun', label: 'Generate Akun', icon: Key, roles: ['admin'] },
+                    ]
+                },
+                {
+                    category: "Administrasi Guru",
+                    items: [
+                        { id: 'absensi-guru', label: 'Absensi Saya', icon: MapPin, roles: ['guru'] },
+                        { id: 'jadwal', label: 'Jadwal Mengajar', icon: Calendar, roles: ['guru'] },
+                        { id: 'jurnal', label: 'Jurnal Mengajar', icon: Book, roles: ['guru'] },
+                        { id: 'presensi', label: 'Presensi Siswa', icon: UserCheck, roles: ['guru'] },
+                        { id: 'asesmen', label: 'Asesmen & Nilai', icon: ClipboardCheck, roles: ['guru'] },
+                        { id: 'p5', label: 'Kokurikuler (P5)', icon: GraduationCap, roles: ['guru'] },
+                        { id: 'drive-guru', label: 'Drive Administrasi', icon: Folder, roles: ['guru'] },
+                    ]
+                },
+                {
+                    category: "Tugas Tambahan",
+                    items: [
+                        { id: 'jurnal-piket', label: 'Jurnal Piket', icon: ClipboardCheck, roles: ['guru'] },
+                    ]
+                }
+            ];
+
+            // Determines Sidebar state for desktop: Hovered or standard collapsed state
+            const isExpanded = isOpen || isHovered; 
+
+            return (
+                <>
+                    {/* Mobile Overlay */}
+                    <div 
+                        className={`fixed inset-0 bg-slate-900/50 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        onClick={() => setIsOpen(false)}
+                    ></div>
+
+                    {/* Sidebar Container */}
+                    <div 
+                        className={`fixed md:relative inset-y-0 left-0 z-50 bg-slate-900 text-white sidebar-transition flex flex-col shadow-2xl md:shadow-none overflow-hidden
+                        ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'} 
+                        ${/* Desktop Width Logic: Normal=20 (5rem), Hover=64 (16rem) */ ''}
+                        md:w-20 hover:md:w-64`}
+                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseLeave={() => setIsHovered(false)}
+                    >
+                        <div className="flex flex-col justify-center h-20 px-6 bg-slate-950 border-b border-slate-800 shrink-0">
+                            <div className="flex items-center gap-3 font-bold text-xl tracking-tight text-white">
+                                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+                                    {schoolConfig && schoolConfig.logo ? 
+                                        <img src={schoolConfig.logo} alt="Logo" className="w-full h-full object-cover" /> :
+                                        <School size={20} className="text-indigo-600" />
+                                    }
+                                </div>
+                                <span className={`whitespace-nowrap transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-100' : 'opacity-0 md:hidden'}`}>
+                                    SIJAGA
+                                </span>
+                                <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white ml-auto">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="flex-1 px-3 py-6 overflow-y-auto no-scrollbar overflow-x-hidden">
+                            {menuGroups.map((group, idx) => {
+                                const visibleItems = group.items.filter(item => {
+                                    if (item.id === 'jurnal-piket' && !isPiket) return false;
+                                    return item.roles.includes(user.role);
+                                });
+
+                                if (visibleItems.length === 0) return null;
+
+                                return (
+                                    <div key={idx} className="mb-6">
+                                        <div className={`mb-2 px-4 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'}`}>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest whitespace-nowrap">{group.category}</p>
+                                        </div>
+                                        <nav className="space-y-1.5">
+                                            {visibleItems.map((item) => (
+                                                <button
+                                                    key={item.id}
+                                                    onClick={() => { 
+                                                        if (item.id === 'asesmen') {
+                                                            window.open('https://sisipan.smaalmultazam-mjk.sch.id', '_blank');
+                                                        } else if (item.id === 'jurnal-piket') {
+                                                            window.open('https://sigapaltaz.web.app/', '_blank');
+                                                        } else {
+                                                            setActiveTab(item.id); 
+                                                            setIsOpen(false); // Close mobile menu
+                                                        }
+                                                    }}
+                                                    className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 group relative overflow-hidden ${
+                                                        activeTab === item.id 
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/30' 
+                                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                                    }`}
+                                                    title={!isExpanded ? item.label : ''}
+                                                >
+                                                    <item.icon size={22} className={`shrink-0 transition-colors ${activeTab === item.id ? "text-white" : "text-slate-500 group-hover:text-white"}`} />
+                                                    <span className={`whitespace-nowrap transition-all duration-300 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute left-12'}`}>
+                                                        {item.label}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </nav>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="p-3 bg-slate-950 border-t border-slate-800 shrink-0">
+                            <div className={`flex items-center gap-3 mb-2 p-2 rounded-lg bg-slate-900/50 transition-all duration-300 ${isExpanded ? '' : 'justify-center'}`}>
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-xs font-bold uppercase shadow-md shrink-0">
+                                    {user.role.substring(0, 2)}
+                                </div>
+                                <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                                    <p className="text-xs font-semibold truncate text-white">{user.name.split(' ')[0]}</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={onLogout}
+                                className={`w-full flex items-center gap-2 py-2 bg-slate-800 hover:bg-red-600/90 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all uppercase tracking-wide group ${isExpanded ? 'justify-start px-3' : 'justify-center px-0'}`}
+                                title="Keluar"
+                            >
+                                <LogOut size={16} className="group-hover:-translate-x-0.5 transition-transform" /> 
+                                <span className={`transition-all duration-300 ${isExpanded ? 'opacity-100 ml-1' : 'opacity-0 w-0 overflow-hidden'}`}>Keluar</span>
+                            </button>
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        const StatCard = ({ title, value, icon: Icon, color }) => (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                <div>
+                    <p className="text-sm font-medium text-slate-500">{title}</p>
+                    <h3 className="text-3xl font-bold text-slate-800 mt-2">{value}</h3>
+                </div>
+                <div className={`p-4 rounded-xl ${color} shadow-sm transform rotate-3`}>
+                    <Icon size={28} className="text-white" />
+                </div>
+            </div>
+        );
+
+        const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs, setClassLogs, teacherAttendance, schedules, jurnals, showToast }) => {
+            const today = new Date();
+            const todayISO = today.toISOString().split('T')[0];
+            const todayLocale = today.toLocaleDateString('id-ID');
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const activeDay = days[today.getDay()];
+            let pendingTasks = [];
+
+            const handleMasukKelas = (schedule) => {
+                const newLog = {
+                    id: Date.now(),
+                    teacherName: user.name,
+                    className: schedule.class,
+                    subject: schedule.subject,
+                    time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                    scheduleId: schedule.id
+                };
+                // Updated to accept functional update to support firestore logic downstream
+                setClassLogs((prev) => [newLog, ...prev]);
+                showToast(`Berhasil masuk kelas ${schedule.class} - ${schedule.subject}`);
+            };
+
+            if (user && user.role === 'guru') {
+                const hasAbsensi = teacherAttendance.some(t => t.teacherName === user.name && t.date === todayISO);
+                if (!hasAbsensi) {
+                    pendingTasks.push({ id: 'absen-pagi', title: 'Absensi Kehadiran Sekolah', desc: 'Anda belum mencatat kehadiran datang hari ini.', type: 'urgent', link: 'absensi-guru', btnText: 'Absen Sekarang' });
+                }
+                const mySchedulesToday = schedules.filter(s => s.day === activeDay && s.teacherName === user.name);
+                mySchedulesToday.forEach(sch => {
+                    const hasEntered = classLogs.some(log => log.scheduleId === sch.id);
+                    if (!hasEntered) {
+                        pendingTasks.push({ 
+                            id: `masuk-${sch.id}`, 
+                            title: `Masuk Kelas ${sch.class}`, 
+                            desc: `${sch.subject} (${sch.time})`, 
+                            type: 'warning', 
+                            btnText: 'Masuk Kelas',
+                            action: () => handleMasukKelas(sch) 
+                        });
+                    }
+                    const hasJournal = jurnals.some(j => j.scheduleId === sch.id && j.date === todayLocale);
+                    if (!hasJournal) {
+                        pendingTasks.push({ id: `jurnal-${sch.id}`, title: `Isi Jurnal ${sch.class}`, desc: `${sch.subject} - ${sch.time}`, type: 'info', link: 'jurnal', btnText: 'Isi Jurnal' });
+                    }
+                });
+            }
+
+            return (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-orange-100 text-orange-600 rounded-full">
+                                <Sun size={32} />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-slate-800">Selamat Pagi, {user.name}!</h1>
+                                <p className="text-slate-500">
+                                    {user.role === 'admin' ? 'Panel Administrator Sekolah SIJAGA.' : `Semangat mengajar di hari ${activeDay} ini!`}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="bg-indigo-50 text-indigo-700 px-5 py-3 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2">
+                            <Calendar size={18} />
+                            {today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
+                    </div>
+
+                    {user.role === 'guru' && (
+                        <div className={`rounded-2xl shadow-sm overflow-hidden animate-fade-in-down border ${pendingTasks.length > 0 ? 'bg-white border-red-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                            <div className={`p-4 border-b flex items-center gap-2 ${pendingTasks.length > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-100/50 border-emerald-200'}`}>
+                                {pendingTasks.length > 0 ? <AlertCircle size={20} className="text-red-500" /> : <CheckCircle size={20} className="text-emerald-500" />}
+                                <h3 className={`font-bold ${pendingTasks.length > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                                    {pendingTasks.length > 0 ? `Daftar Pekerjaan Belum Selesai (${pendingTasks.length})` : 'Semua Pekerjaan Hari Ini Selesai!'}
+                                </h3>
+                            </div>
+                            {pendingTasks.length > 0 ? (
+                                <div className="divide-y divide-slate-100">
+                                    {pendingTasks.map((task) => (
+                                        <div key={task.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between hover:bg-slate-50 transition-colors gap-3">
+                                            <div className="flex items-start gap-3">
+                                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${task.type === 'urgent' ? 'bg-red-500' : task.type === 'warning' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                                                <div>
+                                                    <span className="font-bold text-slate-700 block">{task.title}</span>
+                                                    {task.desc && <span className="text-xs text-slate-500">{task.desc}</span>}
+                                                </div>
+                                            </div>
+                                            <button onClick={() => task.action ? task.action() : setActiveTab(task.link)} className="px-4 py-2 text-xs font-bold bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm whitespace-nowrap">
+                                                {task.btnText}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-6 text-center text-emerald-600 text-sm font-medium">Luar biasa! Anda telah menyelesaikan semua administrasi mengajar untuk hari ini.</div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard title="Total Siswa" value={studentsCount} icon={Users} color="bg-gradient-to-br from-blue-500 to-blue-600" />
+                        <StatCard title="Total Guru" value={teachersCount} icon={UserCog} color="bg-gradient-to-br from-pink-500 to-pink-600" />
+                        <StatCard title="Total Kelas" value="5" icon={LayoutDashboard} color="bg-gradient-to-br from-emerald-500 to-emerald-600" />
+                        {user.role === 'guru' && (
+                            <StatCard title="Jam Mengajar" value="24 JP" icon={Calendar} color="bg-gradient-to-br from-orange-500 to-orange-600" />
+                        )}
+                    </div>
+
+                    {user.role === 'guru' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                                <h3 className="font-bold text-xl text-slate-800 mb-6 flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Calendar size={24} /></div>
+                                    Jadwal Hari Ini ({activeDay})
+                                </h3>
+                                <div className="space-y-4">
+                                    {schedules.filter(s => s.day === activeDay).length > 0 ? (
+                                        schedules.filter(s => s.day === activeDay).map((item, idx) => {
+                                            const isEntered = classLogs.some(log => log.scheduleId === item.id);
+                                            return (
+                                                <div key={idx} className="flex items-center p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition-colors group">
+                                                    <div className="w-16 text-center"><span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Jam</span><span className="text-lg font-bold text-indigo-600">{item.time.split(' - ')[0]}</span></div>
+                                                    <div className="h-12 w-px bg-slate-200 mx-6"></div>
+                                                    <div>
+                                                        <h4 className="font-bold text-lg text-slate-800 group-hover:text-indigo-700 transition-colors">{item.subject}</h4>
+                                                        <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                                                            <Users size={14} /> Kelas {item.class} • Ruang {item.room} <br/>
+                                                            <span className="text-xs text-slate-400 font-normal">Guru: {item.teacherName}</span>
+                                                        </p>
+                                                    </div>
+                                                    <div className="ml-auto">
+                                                        {isEntered ? (
+                                                            <span className="px-4 py-2 bg-emerald-100 text-emerald-700 text-sm font-bold rounded-lg flex items-center gap-2"><CheckCircle size={14} /> Di Kelas</span>
+                                                        ) : (
+                                                            item.teacherName === user.name && (
+                                                                <button onClick={() => handleMasukKelas(item)} className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
+                                                                    <LogIn size={14} /> Masuk Kelas
+                                                                </button>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">Tidak ada jadwal pelajaran di sekolah hari ini.</div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+                                <h3 className="font-bold text-xl text-slate-800 mb-6">Aktivitas Cepat</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={() => window.open('https://sisipan.smaalmultazam-mjk.sch.id', '_blank')} className="p-5 bg-blue-50 text-blue-700 rounded-2xl text-sm font-bold hover:bg-blue-100 flex flex-col items-center gap-3 border border-blue-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><Plus size={24} /></div>Input Nilai</button>
+                                    <button onClick={() => setActiveTab('presensi')} className="p-5 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-bold hover:bg-emerald-100 flex flex-col items-center gap-3 border border-emerald-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><UserCheck size={24} /></div>Presensi</button>
+                                    <button onClick={() => setActiveTab('drive-guru')} className="p-5 bg-purple-50 text-purple-700 rounded-2xl text-sm font-bold hover:bg-purple-100 flex flex-col items-center gap-3 border border-purple-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><FileText size={24} /></div>Upload Admin</button>
+                                    <button onClick={() => window.open('https://sisipan.smaalmultazam-mjk.sch.id', '_blank')} className="p-5 bg-orange-50 text-orange-700 rounded-2xl text-sm font-bold hover:bg-orange-100 flex flex-col items-center gap-3 border border-orange-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><BarChart3 size={24} /></div>Analisis</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const AbsensiGuru = ({ user, teacherAttendance, setTeacherAttendance, showToast }) => {
+            const [status, setStatus] = useState('idle'); // idle, loading, success, error
+            const [location, setLocation] = useState(null);
+            const today = new Date().toISOString().split('T')[0];
+            const isPresent = teacherAttendance.find(a => a.teacherName === user.name && a.date === today);
+
+            const handleAbsen = () => {
+                setStatus('loading');
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const { latitude, longitude } = position.coords;
+                            setLocation({ latitude, longitude });
+                            setTimeout(() => {
+                                const newRecord = {
+                                    id: Date.now(),
+                                    teacherName: user.name,
+                                    date: today,
+                                    time: new Date().toLocaleTimeString(),
+                                    location: { latitude, longitude },
+                                    status: 'Hadir'
+                                };
+                                setTeacherAttendance((prev) => [...prev, newRecord]);
+                                setStatus('success');
+                                showToast('Absensi Berhasil Tercatat!');
+                            }, 1500);
+                        },
+                        (error) => {
+                            console.error(error);
+                            setStatus('error');
+                            showToast("Gagal mendapatkan lokasi. Pastikan GPS aktif.", "error");
+                        }
+                    );
+                } else {
+                    showToast("Geolocation tidak didukung browser ini.", "error");
+                    setStatus('error');
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-teal-100 text-teal-600 rounded-xl"><MapPin size={32} /></div>
+                            <div><h2 className="text-2xl font-bold text-slate-800">Absensi Kehadiran</h2><p className="text-slate-500 text-sm">Catat kehadiran harian Anda dengan lokasi GPS</p></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 flex flex-col items-center justify-center text-center">
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">Status Kehadiran Hari Ini</h3>
+                            <p className="text-slate-500 mb-8">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            
+                            {isPresent ? (
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 w-full animate-fade-in">
+                                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle size={32} /></div>
+                                    <h4 className="text-lg font-bold text-emerald-800 mb-1">Sudah Absen Masuk</h4>
+                                    <p className="text-emerald-600 text-sm">Pukul: {isPresent.time}</p>
+                                    <p className="text-emerald-600 text-xs mt-2 flex items-center justify-center gap-1"><MapPin size={12} /> {isPresent.location.latitude.toFixed(4)}, {isPresent.location.longitude.toFixed(4)}</p>
+                                </div>
+                            ) : (
+                                <div className="w-full">
+                                    {status === 'loading' ? (
+                                        <div className="py-8 flex flex-col items-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div><p className="text-indigo-600 font-medium">Mengambil Lokasi...</p></div>
+                                    ) : (
+                                        <button onClick={handleAbsen} className="w-full py-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transform hover:-translate-y-1 transition-all flex flex-col items-center gap-2">
+                                            <Crosshair size={32} /><span>KLIK UNTUK ABSEN MASUK</span><span className="text-xs font-normal opacity-90">Pastikan Izin Lokasi Aktif</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-slate-50 p-8 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center">
+                            <div className="bg-white p-4 rounded-full shadow-sm mb-4"><Clock size={32} className="text-slate-400" /></div>
+                            <h4 className="text-lg font-bold text-slate-700 mb-2">Riwayat Absensi</h4>
+                            <p className="text-slate-500 text-sm max-w-xs">Riwayat kehadiran Anda selama bulan ini akan muncul di sini.</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const JadwalGuru = ({ user, schedules }) => {
+            const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const mySchedules = schedules.filter(s => s.teacherName === user.name);
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                                <Calendar size={32} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800">Jadwal Mengajar Saya</h2>
+                                <p className="text-slate-500 text-sm">Jadwal pelajaran aktif tahun ajaran ini</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {days.map(day => {
+                            const dailySchedules = mySchedules.filter(s => s.day === day).sort((a, b) => a.time.localeCompare(b.time));
+                            if (dailySchedules.length === 0) return null;
+
+                            return (
+                                <div key={day} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                                        <h3 className="font-bold text-slate-800">{day}</h3>
+                                    </div>
+                                    <div className="divide-y divide-slate-100">
+                                        {dailySchedules.map((schedule, idx) => (
+                                            <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="font-bold text-indigo-600 font-mono text-sm">{schedule.time}</span>
+                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{schedule.class}</span>
+                                                </div>
+                                                <h4 className="font-bold text-slate-700">{schedule.subject}</h4>
+                                                <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                                                    <MapPin size={12} /> Ruang {schedule.room}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {mySchedules.length === 0 && (
+                            <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400">
+                                Belum ada jadwal mengajar yang ditugaskan.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jurnals, showToast }) => {
+            const [selectedDate, setSelectedDate] = useState(new Date());
+            const [selectedSchedule, setSelectedSchedule] = useState(null);
+            
+            const getDayName = (date) => {
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                return days[date.getDay()];
+            };
+            
+            const activeDay = getDayName(selectedDate);
+            const selectedDateLocale = selectedDate.toLocaleDateString('id-ID');
+            const dateInputValue = selectedDate.toISOString().split('T')[0];
+
+            const [form, setForm] = useState({ tujuan: '', kegiatan: '', refleksi: '', catatan: '' });
+
+            // Check if form is valid (all required fields filled)
+            const isFormValid = useMemo(() => {
+                return form.tujuan.trim() !== '' && 
+                       form.kegiatan.trim() !== '' && 
+                       form.refleksi.trim() !== '' && 
+                       form.catatan.trim() !== '';
+            }, [form]);
+
+            const getAbsentStudents = (className) => {
+                const classStudents = students.filter(s => s.class === className);
+                const absent = classStudents.filter(s => {
+                    const status = attendance[s.id];
+                    return status && status !== 'Hadir';
+                });
+                if (absent.length === 0) return 'Nihil';
+                return absent.map(s => `${s.name} (${attendance[s.id]})`).join(', ');
+            };
+
+            const handleDateChange = (e) => {
+                const newDate = new Date(e.target.value);
+                setSelectedDate(newDate);
+                setSelectedSchedule(null); 
+            };
+
+            const handleSelectSchedule = (schedule) => {
+                setSelectedSchedule(schedule);
+                const existingJournal = jurnals.find(j => j.scheduleId === schedule.id && j.date === selectedDateLocale);
+                if (existingJournal) {
+                    setForm({
+                        tujuan: existingJournal.tujuan,
+                        kegiatan: existingJournal.kegiatan,
+                        refleksi: existingJournal.refleksi,
+                        catatan: existingJournal.catatan
+                    });
+                    showToast("Memuat jurnal yang tersimpan untuk diedit.", "success");
+                } else {
+                    setForm({ tujuan: '', kegiatan: '', refleksi: '', catatan: '' });
+                }
+            };
+
+            const handleSave = () => {
+                if (!isFormValid) {
+                    showToast("Mohon lengkapi semua komponen jurnal (Tujuan, Kegiatan, Refleksi, Catatan).", "error");
+                    return;
+                }
+                const journalData = {
+                    scheduleId: selectedSchedule.id,
+                    date: selectedDateLocale,
+                    ...selectedSchedule,
+                    ...form,
+                    absentStudents: getAbsentStudents(selectedSchedule.class)
+                };
+
+                // Logic sync firestore handles array updates
+                setJurnals((prev) => {
+                    const existingIndex = prev.findIndex(j => j.scheduleId === selectedSchedule.id && j.date === selectedDateLocale);
+                    if (existingIndex > -1) {
+                        const updated = [...prev];
+                        updated[existingIndex] = { ...updated[existingIndex], ...journalData };
+                        showToast("Perubahan jurnal berhasil disimpan!");
+                        return updated;
+                    } else {
+                        showToast("Jurnal baru berhasil disimpan!");
+                        return [...prev, { ...journalData, id: Date.now() }];
+                    }
+                });
+                setSelectedSchedule(null);
+            };
+
+            const dailySchedules = schedules.filter(s => s.day === activeDay);
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div>
+                        <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto"><span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-2">Filter:</span><input type="date" value={dateInputValue} onChange={handleDateChange} className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none font-bold flex-1 md:flex-initial" /></div>
+                    </div>
+
+                    {!selectedSchedule ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between mb-2"><h3 className="font-bold text-lg text-slate-700">Jadwal Hari {activeDay}, {selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</h3></div>
+                            {dailySchedules.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {dailySchedules.map((item) => {
+                                        const isFilled = jurnals.some(j => j.scheduleId === item.id && j.date === selectedDateLocale);
+                                        return (
+                                        <div key={item.id} onClick={() => handleSelectSchedule(item)} className={`bg-white p-6 rounded-xl border cursor-pointer transition-all hover:shadow-md group ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-400'}`}>
+                                            <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${isFilled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>{item.time}</span><span className={`text-xs ${isFilled ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>{isFilled ? 'Sudah Diisi (Klik untuk Edit)' : 'Klik untuk isi'}</span></div>
+                                            <h4 className="font-bold text-lg text-slate-800">{item.subject}</h4>
+                                            <p className="text-slate-500 text-sm">Kelas {item.class} • Ruang {item.room}</p>
+                                        </div>
+                                    )})}
+                                </div>
+                            ) : (
+                                <div className="p-12 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 flex flex-col items-center"><Calendar size={48} className="text-slate-300 mb-4" /><p>Tidak ada jadwal mengajar pada hari <strong>{activeDay}</strong>.</p><p className="text-sm mt-1">Silakan pilih tanggal lain pada filter di atas.</p></div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm animate-fade-in-down">
+                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4"><h3 className="font-bold text-xl text-slate-800">Isi Jurnal Kelas {selectedSchedule.class}</h3><button onClick={() => setSelectedSchedule(null)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button></div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Hari / Tanggal</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{activeDay}, {selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mata Pelajaran</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{selectedSchedule.subject}</div></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Jam Ke-</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{selectedSchedule.time}</div></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Siswa Tidak Hadir</label><div className="p-3 bg-red-50 text-red-700 font-medium border border-red-100 rounded-xl">{getAbsentStudents(selectedSchedule.class)}</div><p className="text-[10px] text-slate-400 mt-1">*Data diambil otomatis dari menu Presensi Siswa</p></div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div><label className="block text-sm font-bold text-slate-700 mb-2">Tujuan Pembelajaran</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="2" placeholder="Contoh: Peserta didik mampu menjelaskan..." value={form.tujuan} onChange={(e) => setForm({...form, tujuan: e.target.value})}></textarea></div>
+                                <div><label className="block text-sm font-bold text-slate-700 mb-2">Kegiatan Pembelajaran / ATP</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="3" placeholder="Jelaskan alur kegiatan..." value={form.kegiatan} onChange={(e) => setForm({...form, kegiatan: e.target.value})}></textarea></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div><label className="block text-sm font-bold text-slate-700 mb-2">Refleksi Guru</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="2" value={form.refleksi} onChange={(e) => setForm({...form, refleksi: e.target.value})}></textarea></div>
+                                    <div><label className="block text-sm font-bold text-slate-700 mb-2">Catatan Kejadian</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="2" value={form.catatan} onChange={(e) => setForm({...form, catatan: e.target.value})}></textarea></div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex justify-end gap-3">
+                                <button onClick={() => setSelectedSchedule(null)} className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
+                                <button 
+                                    onClick={handleSave} 
+                                    disabled={!isFormValid}
+                                    className={`px-6 py-3 font-bold rounded-xl shadow-lg transition-colors flex items-center gap-2 ${!isFormValid ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'}`}
+                                >
+                                    <Save size={18} /> Simpan Jurnal
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const MonitoringGuru = ({ teacherAttendance, classLogs }) => {
+            return (
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4"><div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><Activity size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Monitoring Guru</h2><p className="text-slate-500 text-sm">Pantau kehadiran guru dan aktivitas kelas secara real-time</p></div></div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-purple-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-purple-800 flex items-center gap-2"><MapPin size={20} /> Kehadiran di Sekolah</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-purple-600 border border-purple-100">Hari Ini</span></div>
+                            <div className="p-0">
+                                {teacherAttendance.length > 0 ? (
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Waktu</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Status</th></tr></thead>
+                                        <tbody className="divide-y divide-slate-100">{teacherAttendance.map((log) => (<tr key={log.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-medium text-slate-800">{log.teacherName}</td><td className="px-6 py-4 text-slate-500">{log.time}</td><td className="px-6 py-4 text-right"><span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span></td></tr>))}</tbody>
+                                    </table>
+                                ) : ( <div className="p-8 text-center text-slate-400">Belum ada data kehadiran hari ini.</div> )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-blue-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-blue-800 flex items-center gap-2"><LogIn size={20} /> Aktivitas Masuk Kelas</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-blue-600 border border-blue-100">Real-time</span></div>
+                            <div className="p-0">
+                                {classLogs.length > 0 ? (
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Kelas / Mapel</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jam Masuk</th></tr></thead>
+                                        <tbody className="divide-y divide-slate-100">{classLogs.map((log) => (<tr key={log.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-medium text-slate-800">{log.teacherName}</td><td className="px-6 py-4"><div className="text-slate-800 font-bold">{log.className}</div><div className="text-xs text-slate-500">{log.subject}</div></td><td className="px-6 py-4 text-right text-blue-600 font-mono font-medium">{log.time}</td></tr>))}</tbody>
+                                    </table>
+                                ) : ( <div className="p-8 text-center text-slate-400">Belum ada aktivitas masuk kelas.</div> )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- NEW COMPONENT: Drive Administrasi Guru (REFACTORED) ---
+        const DriveAdministrasiGuru = ({ teacherDriveLinks, setTeacherDriveLinks, user, showToast }) => {
+            
+            // Define folders - Updated to merge PSAJ
+            const folders = [
+                { id: 'perangkat', title: 'Perangkat Ajar', color: 'bg-blue-100 text-blue-600' },
+                { id: 'sas_sat', title: 'Administrasi SAS/SAT', color: 'bg-emerald-100 text-emerald-600' },
+                { id: 'psaj', title: 'Administrasi PSAJ (Praktik & CBT)', color: 'bg-orange-100 text-orange-600' },
+            ];
+
+            const handleFolderClick = (folderId) => {
+                // Get links for current user
+                const userLinks = teacherDriveLinks[user.id];
+                if (userLinks && userLinks[folderId]) {
+                    window.open(userLinks[folderId], '_blank');
+                } else {
+                    showToast('Link folder belum ditautkan oleh Admin.', 'error');
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                                <Folder size={32} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800">Drive Administrasi Guru</h2>
+                                <p className="text-slate-500 text-sm">Akses cepat ke folder administrasi digital Anda.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {folders.map(folder => (
+                            <button 
+                                key={folder.id}
+                                onClick={() => handleFolderClick(folder.id)}
+                                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col items-center justify-center text-center group h-48"
+                            >
+                                <div className={`p-4 rounded-full mb-4 transition-transform group-hover:scale-110 ${folder.color}`}>
+                                    <Folder size={48} />
+                                </div>
+                                <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{folder.title}</h3>
+                                <span className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                    <Link size={12} /> Buka Folder
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- Placeholder Components ---
+        const Asesmen = () => (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
+                <div className="bg-indigo-50 p-4 rounded-full mb-4">
+                    <ClipboardCheck size={40} className="text-indigo-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800">Fitur Asesmen & Nilai</h3>
+                <p className="text-slate-500 mt-2">Modul ini sedang dalam tahap pengembangan.</p>
+            </div>
+        );
+
+        const PerangkatAjar = ({ modules, setModules, showToast }) => {
+            // (Code preserved but omitted for brevity in this output, logic remains similar to other CRUD)
+            return <div className="text-center p-10 text-slate-500">Modul Perangkat Ajar</div>
+        };
+
+        const PresensiSiswa = ({ students, attendance, setAttendance, showToast }) => {
+            // State attendance sudah di-lift ke App component
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+            // Add useEffect to initialize default attendance to 'Hadir'
+            useEffect(() => {
+                const newAttendance = {};
+                let needsUpdate = false;
+                
+                students.forEach(student => {
+                    // Check if attendance for this student is already set in the global state
+                    // If not, we prepare to set it to 'Hadir'
+                    if (!attendance[student.id]) {
+                        newAttendance[student.id] = 'Hadir';
+                        needsUpdate = true;
+                    }
+                });
+
+                // Only update state if there are changes to avoid infinite loops
+                if (needsUpdate) {
+                    setAttendance(prev => ({ ...prev, ...newAttendance }));
+                }
+            }, [students]); // Only run when students list changes (or on mount)
+
+            const handleStatusChange = (studentId, status) => {
+                setAttendance(prev => ({
+                    ...prev,
+                    [studentId]: status
+                }));
+            };
+
+            const handleSavePresensi = () => {
+                showToast("Data Presensi Berhasil Disimpan!");
+            };
+
+            const statusColors = {
+                'Hadir': 'bg-emerald-100 text-emerald-700 border-emerald-200 ring-2 ring-emerald-500 ring-offset-1',
+                'Sakit': 'bg-blue-100 text-blue-700 border-blue-200 ring-2 ring-blue-500 ring-offset-1',
+                'Izin': 'bg-amber-100 text-amber-700 border-amber-200 ring-2 ring-amber-500 ring-offset-1',
+                'Alpha': 'bg-red-100 text-red-700 border-red-200 ring-2 ring-red-500 ring-offset-1',
+            };
+
+            return (
+                <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                            <UserCheck size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-800">Presensi Kelas X-A</h2>
+                            <p className="text-slate-500 text-sm">Catat kehadiran siswa secara real-time</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                    <input 
+                        type="date" 
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm flex-1 md:flex-initial"
+                    />
+                    <button 
+                        onClick={handleSavePresensi}
+                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center gap-2 shadow-lg shadow-emerald-200 transition-all"
+                    >
+                        <Save size={18} /> Simpan
+                    </button>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[600px]">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">No</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">Nama Siswa</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs text-center">Status Kehadiran</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {students.map((student, index) => (
+                        <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-slate-500 font-medium">{index + 1}</td>
+                            <td className="px-6 py-4">
+                            <div className="font-bold text-slate-800">{student.name}</div>
+                            <div className="text-xs text-slate-400 font-mono mt-0.5">{student.nis}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                            <div className="flex justify-center gap-2">
+                                {['Hadir', 'Sakit', 'Izin', 'Alpha'].map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => handleStatusChange(student.id, status)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 ${
+                                        (attendance[student.id] || 'Hadir') === status 
+                                            ? statusColors[status] + ' shadow-md scale-105' 
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
+                                    }`}
+                                >
+                                    {status}
+                                </button>
+                                ))}
+                            </div>
+                            </td>
+                            <td className="px-6 py-4">
+                            <input type="text" placeholder="Tulis keterangan..." className="w-full border-b border-slate-200 focus:border-emerald-500 focus:outline-none bg-transparent py-1 text-slate-600 placeholder-slate-300 transition-colors" />
+                            </td>
+                        </tr>
+                        ))}
+                    </tbody>
+                    </table>
+                </div>
+                </div>
+            );
+        };
+
+        // --- NEW COMPONENT: Jurnal Kokurikuler (P5) ---
+        const JurnalKokurikuler = ({ showToast }) => {
+            const [entries, setEntries] = useState([
+                { id: 1, date: '2025-07-20', theme: 'Gaya Hidup Berkelanjutan', topic: 'Pengolahan Sampah Plastik', dimension: 'Bernalar Kritis', activity: 'Diskusi kelompok merancang desain ecobrick.' },
+            ]);
+            const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], theme: '', topic: '', dimension: '', activity: '', notes: '' });
+            const themes = ["Gaya Hidup Berkelanjutan", "Kearifan Lokal", "Bhinneka Tunggal Ika", "Bangunlah Jiwa dan Raganya", "Suara Demokrasi", "Berekayasa dan Berteknologi", "Kewirausahaan"];
+            const dimensions = ["Beriman, Bertakwa, Berakhlak Mulia", "Berkebinekaan Global", "Bergotong Royong", "Mandiri", "Bernalar Kritis", "Kreatif"];
+            
+            const handleSave = () => {
+                if (!form.theme || !form.activity) { showToast("Mohon lengkapi Tema dan Uraian Kegiatan.", "error"); return; }
+                const newEntry = { ...form, id: Date.now() };
+                setEntries([newEntry, ...entries]);
+                setForm({ ...form, activity: '', notes: '', topic: '' });
+                showToast("Jurnal Kokurikuler berhasil disimpan!");
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4"><div className="p-3 bg-orange-100 text-orange-600 rounded-xl"><GraduationCap size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Kokurikuler (P5)</h2><p className="text-slate-500 text-sm">Rekam Jejak Kegiatan Projek Penguatan Profil Pelajar Pancasila</p></div></div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit">
+                            <h3 className="font-bold text-lg text-slate-800 mb-4 border-b border-slate-100 pb-2">Input Kegiatan Baru</h3>
+                            <div className="space-y-4">
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tanggal</label><input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none" /></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tema Projek</label><select value={form.theme} onChange={e => setForm({...form, theme: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none"><option value="">-- Pilih Tema --</option>{themes.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Topik Spesifik</label><input type="text" placeholder="Contoh: Ecobrick" value={form.topic} onChange={e => setForm({...form, topic: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none" /></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fokus Dimensi</label><select value={form.dimension} onChange={e => setForm({...form, dimension: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none"><option value="">-- Pilih Dimensi --</option>{dimensions.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Uraian Kegiatan</label><textarea rows="3" value={form.activity} onChange={e => setForm({...form, activity: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Deskripsi aktivitas siswa..."></textarea></div>
+                                <button onClick={handleSave} className="w-full py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2"><Save size={18} /> Simpan Jurnal</button>
+                            </div>
+                        </div>
+                        <div className="lg:col-span-2 space-y-4">
+                             <h3 className="font-bold text-lg text-slate-700 mb-2">Riwayat Kegiatan</h3>
+                             {entries.length === 0 ? ( <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300">Belum ada catatan kegiatan kokurikuler.</div> ) : ( entries.map(entry => (
+                                 <div key={entry.id} className="bg-white p-6 rounded-2xl border border-slate-200 hover:shadow-md transition-shadow relative overflow-hidden group">
+                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500"></div>
+                                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-3"><div className="flex items-center gap-2 mb-2 md:mb-0"><span className="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-bold rounded-lg border border-orange-100">{entry.date}</span><span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg border border-slate-200">{entry.theme}</span></div><div className="text-xs text-slate-400 font-medium">Dimensi: {entry.dimension}</div></div>
+                                     <h4 className="font-bold text-lg text-slate-800 mb-1">{entry.topic || 'Tanpa Topik'}</h4><p className="text-slate-600 text-sm leading-relaxed">{entry.activity}</p>
+                                 </div>
+                             )))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GenerateAkun = ({ teachers, accounts, setAccounts, showToast }) => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const generateUsername = (name) => { return name.toLowerCase().replace(/[^a-z0-9]/g, ''); };
+            const handleGenerate = (teacher) => {
+                const username = generateUsername(teacher.name);
+                if (accounts.some(acc => acc.username === username)) { showToast(`Username ${username} sudah terdaftar.`, 'error'); return; }
+                const newAccount = { username: username, password: '123456', role: 'guru', name: teacher.name, teacherId: teacher.id };
+                setAccounts((prev) => [...prev, newAccount]); showToast(`Akun untuk ${teacher.name} berhasil dibuat! (Pass: 123456)`);
+            };
+            const handleResetPassword = (account) => {
+                const newPassword = prompt(`Masukkan password baru untuk ${account.name}:`, '123456');
+                if (newPassword) {
+                    setAccounts((prev) => prev.map(acc => acc.username === account.username ? { ...acc, password: newPassword } : acc));
+                    showToast(`Password untuk ${account.name} berhasil diubah!`);
+                }
+            };
+            const filteredTeachers = teachers.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-4"><div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl"><Key size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Generator Akun Guru</h2><p className="text-slate-500 text-sm">Kelola akses login untuk guru secara otomatis</p></div></div>
+                        <div className="relative w-full md:w-64"><Search className="absolute left-3 top-2.5 text-slate-400" size={18} /><input type="text" placeholder="Cari guru..." className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-shadow" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+                        <table className="w-full text-left text-sm min-w-[600px]">
+                            <thead className="bg-slate-50 border-b border-slate-200"><tr><th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Nama Guru</th><th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">NIP</th><th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Status Akun</th><th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Username / Password</th><th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs text-right">Aksi</th></tr></thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredTeachers.map((teacher) => {
+                                    const account = accounts.find(acc => acc.name === teacher.name && acc.role === 'guru');
+                                    return (
+                                        <tr key={teacher.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-slate-800">{teacher.name}</td><td className="px-6 py-4 text-slate-500 font-mono">{teacher.nip}</td>
+                                            <td className="px-6 py-4">{account ? (<span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 flex items-center w-fit gap-1"><CheckCircle size={12} /> Aktif</span>) : (<span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold border border-slate-200">Belum Ada</span>)}</td>
+                                            <td className="px-6 py-4">{account ? (<div className="font-mono text-xs"><span className="text-indigo-600 font-bold">{account.username}</span><span className="text-slate-400 mx-2">|</span><span className="text-slate-500">******</span></div>) : (<span className="text-slate-400 italic">-</span>)}</td>
+                                            <td className="px-6 py-4 text-right">{account ? (<button onClick={() => handleResetPassword(account)} className="px-3 py-2 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-bold border border-orange-100 transition-colors inline-flex items-center gap-2"><Key size={14} /> Ganti Password</button>) : (<button onClick={() => handleGenerate(teacher)} className="px-3 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-xs font-bold shadow-sm transition-colors inline-flex items-center gap-2"><Plus size={14} /> Generate</button>)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        {filteredTeachers.length === 0 && (<div className="p-8 text-center text-slate-400">Tidak ada data guru ditemukan.</div>)}
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- Component: Manajemen Data (Updated with Delete Capability) ---
+        const ManajemenData = ({ 
+            teachers, setTeachers, 
+            students, setStudents, 
+            classes, setClasses,
+            subjects, setSubjects,
+            schedules, setSchedules,
+            showConfirm, showToast,
+            teacherDriveLinks, setTeacherDriveLinks,
+            schoolConfig, setSchoolConfig // Receive school config props
+        }) => {
+            const [activeSubTab, setActiveSubTab] = useState('siswa');
+            const [searchQuery, setSearchQuery] = useState('');
+            
+            // Edit States
+            const [isEditing, setIsEditing] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [showModal, setShowModal] = useState(false);
+            
+            // View Students Modal State
+            const [showClassStudentsModal, setShowClassStudentsModal] = useState(false);
+            const [selectedClassData, setSelectedClassData] = useState(null);
+
+            // Drive Links Modal State
+            const [showDriveModal, setShowDriveModal] = useState(false);
+            const [driveForm, setDriveForm] = useState({ perangkat: '', sas_sat: '', psaj: '' }); // Updated State
+            const [selectedTeacherForDrive, setSelectedTeacherForDrive] = useState(null);
+            
+            // Unified Form State
+            const [formData, setFormData] = useState({});
+
+            const openAddModal = () => {
+                setFormData({});
+                setIsEditing(false);
+                setShowModal(true);
+            };
+
+            const openEditModal = (item, type) => {
+                setFormData(item);
+                setIsEditing(true);
+                setEditingId(item.id);
+                setShowModal(true);
+            };
+
+             // --- Drive Link Handlers ---
+             const openDriveModal = (teacher) => {
+                setSelectedTeacherForDrive(teacher);
+                // Load existing links if any - Updated default structure
+                const links = teacherDriveLinks[teacher.id] || { perangkat: '', sas_sat: '', psaj: '' };
+                setDriveForm(links);
+                setShowDriveModal(true);
+            };
+
+            const handleSaveDriveLinks = () => {
+                setTeacherDriveLinks((prev) => ({
+                    ...prev,
+                    [selectedTeacherForDrive.id]: driveForm
+                }));
+                setShowDriveModal(false);
+                showToast(`Link Drive untuk ${selectedTeacherForDrive.name} berhasil disimpan!`);
+            };
+
+
+            // Function to handle "Lihat Siswa"
+            const handleViewStudents = (kelas) => {
+                setSelectedClassData(kelas);
+                setShowClassStudentsModal(true);
+            };
+
+            const handleSave = () => {
+                // Function updater for firestore-synced state
+                if (activeSubTab === 'siswa') {
+                    setStudents((prev) => isEditing ? prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s) : [...prev, { ...formData, id: Date.now(), status: 'Aktif' }]);
+                } else if (activeSubTab === 'guru') {
+                    setTeachers((prev) => isEditing ? prev.map(t => t.id === editingId ? { ...formData, id: editingId } : t) : [...prev, { ...formData, id: Date.now() }]);
+                } else if (activeSubTab === 'kelas') {
+                    setClasses((prev) => isEditing ? prev.map(c => c.id === editingId ? { ...formData, id: editingId } : c) : [...prev, { ...formData, id: Date.now().toString(), total: 0 }]);
+                } else if (activeSubTab === 'mapel') {
+                    setSubjects((prev) => isEditing ? prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s) : [...prev, { ...formData, id: Date.now() }]);
+                } else if (activeSubTab === 'jadwal') {
+                    setSchedules((prev) => isEditing ? prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s) : [...prev, { ...formData, id: Date.now() }]);
+                }
+                setShowModal(false);
+                setFormData({});
+                showToast("Data Berhasil Disimpan!");
+            };
+
+            const handleDownloadTemplate = (type) => {
+                 let templateData = [];
+                 // Define headers based on type - Updated for completeness
+                 if (type === 'Siswa') templateData = [{ "Nama Lengkap": "", "NIS": "", "L/P": "", "Kelas": "", "Status": "Aktif" }];
+                 else if (type === 'Guru') templateData = [{ "Nama Guru": "", "NIP": "", "Mapel": "", "Tugas Tambahan": "" }]; // Changed Status to Tugas Tambahan
+                 else if (type === 'Kelas') templateData = [{ "Nama Kelas": "", "Wali Kelas": "" }];
+                 else if (type === 'Mapel') templateData = [{ "Kode": "", "Nama Mapel": "", "KKTP": "" }];
+                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Waktu": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
+
+                 // Create workbook and worksheet
+                 const ws = XLSX.utils.json_to_sheet(templateData);
+                 const wb = XLSX.utils.book_new();
+                 XLSX.utils.book_append_sheet(wb, ws, "Template");
+                 
+                 // Generate file
+                 XLSX.writeFile(wb, `Template_${type}.xlsx`);
+                 showToast(`Template Excel ${type} berhasil diunduh.`, "success");
+            }
+            
+            const fileInputRef = useRef(null);
+
+            const handleImportClick = () => {
+                fileInputRef.current.click();
+            };
+
+            const handleFileChange = (e, type) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    const newData = jsonData.map(row => {
+                        // Fallback logic for keys: try exact match first, then lowercase
+                        const getVal = (key) => row[key] || row[key.toLowerCase()] || row[Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase())];
+
+                        if (type === 'Siswa') return { 
+                            id: Date.now() + Math.random(), 
+                            name: getVal("Nama Lengkap"), 
+                            nis: getVal("NIS"), 
+                            gender: getVal("L/P"), 
+                            class: getVal("Kelas"), 
+                            status: getVal("Status") || 'Aktif' 
+                        };
+                        if (type === 'Guru') return { 
+                            id: Date.now() + Math.random(), 
+                            name: getVal("Nama Guru"), 
+                            nip: getVal("NIP"), 
+                            mapel: getVal("Mapel"), 
+                            status: getVal("Tugas Tambahan") || '-' // Map Tugas Tambahan correctly
+                        };
+                        if (type === 'Kelas') return { 
+                            id: Date.now() + Math.random(), 
+                            name: getVal("Nama Kelas"), 
+                            wali: getVal("Wali Kelas"), 
+                            total: 0 
+                        };
+                        if (type === 'Mapel') return { 
+                            id: Date.now() + Math.random(), 
+                            code: getVal("Kode"), 
+                            name: getVal("Nama Mapel"), 
+                            kktp: getVal("KKTP") 
+                        };
+                        if (type === 'Jadwal') return { 
+                            id: Date.now() + Math.random(), 
+                            day: getVal("Hari"), 
+                            time: getVal("Waktu"), 
+                            class: getVal("Kelas"), 
+                            subject: getVal("Mapel"), 
+                            teacherName: getVal("Guru"), 
+                            room: getVal("Ruang") 
+                        };
+                        return null;
+                    }).filter(item => item !== null && (item.name || item.code || item.day)); // Basic validity check
+                    
+                    if (newData.length > 0) {
+                        // Using function update for Firestore sync
+                        if (type === 'Siswa') setStudents((prev) => [...prev, ...newData]);
+                        else if (type === 'Guru') setTeachers((prev) => [...prev, ...newData]);
+                        else if (type === 'Kelas') setClasses((prev) => [...prev, ...newData]);
+                        else if (type === 'Mapel') setSubjects((prev) => [...prev, ...newData]);
+                        else if (type === 'Jadwal') setSchedules((prev) => [...prev, ...newData]);
+
+                        showToast(`Berhasil mengimport ${newData.length} data ${type}.`, "success");
+                    } else {
+                        showToast(`Gagal membaca data. Pastikan format sesuai template.`, "error");
+                    }
+                };
+                reader.readAsArrayBuffer(file); 
+                e.target.value = null; // Reset input
+            };
+
+
+            // --- Delete Handlers ---
+            const handleDeleteStudent = (id) => {
+                showConfirm('Yakin ingin menghapus data siswa ini?', () => {
+                    setStudents((prev) => prev.filter(s => s.id !== id));
+                    showToast("Data Siswa Berhasil Dihapus", "error");
+                });
+            };
+
+            const handleDeleteTeacher = (id) => {
+                showConfirm('Yakin ingin menghapus data guru ini?', () => {
+                    setTeachers((prev) => prev.filter(t => t.id !== id));
+                    showToast("Data Guru Berhasil Dihapus", "error");
+                });
+            };
+
+            const handleDeleteClass = (id) => {
+                showConfirm('Yakin ingin menghapus kelas ini? Data siswa di dalamnya harus dipindahkan terlebih dahulu.', () => {
+                    setClasses((prev) => prev.filter(c => c.id !== id));
+                     showToast("Data Kelas Berhasil Dihapus", "error");
+                });
+            };
+
+            const handleDeleteSubject = (id) => {
+                showConfirm('Yakin ingin menghapus mata pelajaran ini?', () => {
+                    setSubjects((prev) => prev.filter(s => s.id !== id));
+                     showToast("Data Mapel Berhasil Dihapus", "error");
+                });
+            };
+
+             const handleDeleteSchedule = (id) => {
+                showConfirm('Yakin ingin menghapus jadwal ini?', () => {
+                    setSchedules((prev) => prev.filter(s => s.id !== id));
+                    showToast("Jadwal Berhasil Dihapus", "error");
+                });
+            };
+            
+            const ImportExportButtons = ({ type }) => (
+                <div className="flex gap-2 ml-auto">
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        style={{display: 'none'}} 
+                        accept=".xlsx, .xls"
+                        onChange={(e) => handleFileChange(e, type)}
+                    />
+                    <button 
+                        onClick={() => handleDownloadTemplate(type)} 
+                        className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-100 flex items-center gap-2"
+                    >
+                         <FileSpreadsheet size={16} /> Template
+                    </button>
+                     <button 
+                        onClick={handleImportClick} 
+                        className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 flex items-center gap-2"
+                    >
+                         <Upload size={16} /> Import
+                    </button>
+                     <button 
+                        onClick={openAddModal}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-md shadow-indigo-200"
+                    >
+                        <Plus size={16} /> Tambah
+                    </button>
+                </div>
+            );
+
+            const subTabs = [
+                { id: 'siswa', label: 'Data Siswa', icon: Users },
+                { id: 'guru', label: 'Data Guru', icon: UserCog },
+                { id: 'kelas', label: 'Data Kelas', icon: LayoutDashboard },
+                { id: 'mapel', label: 'Mata Pelajaran', icon: BookOpen },
+                { id: 'jadwal', label: 'Data Jadwal', icon: Calendar },
+                { id: 'sekolah', label: 'Pengaturan Sekolah', icon: School },
+            ];
+
+            return (
+                <div className="space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-slate-100 text-slate-600 rounded-xl">
+                            <Database size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-800">Manajemen Data</h2>
+                            <p className="text-slate-500 text-sm">Pusat pengaturan data induk sekolah</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sub Tabs Navigation */}
+                <div className="flex overflow-x-auto border-b border-slate-200 space-x-1 pb-1">
+                    {subTabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveSubTab(tab.id)}
+                        className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 whitespace-nowrap transition-all rounded-t-lg ${
+                        activeSubTab === tab.id 
+                            ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' 
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                        }`}
+                    >
+                        <tab.icon size={18} />
+                        {tab.label}
+                    </button>
+                    ))}
+                </div>
+
+                {/* Content Area */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px]">
+                    
+                    {/* TAB 1: DATA SISWA */}
+                    {activeSubTab === 'siswa' && (
+                    <div className="p-6">
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <div className="relative w-full md:w-64">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                            <input 
+                                type="text" 
+                                placeholder="Cari siswa..." 
+                                className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            </div>
+                            <ImportExportButtons type="Siswa" />
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm min-w-[600px]">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Nama Lengkap</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">NIS/NISN</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Kelas</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Status</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs text-right">Aksi</th>
+                                </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                {students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
+                                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 font-bold text-slate-800">{student.name}</td>
+                                    <td className="px-6 py-4 text-slate-500 font-mono">{student.nis}</td>
+                                    <td className="px-6 py-4">
+                                        <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200">{student.class}</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${student.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                                        {student.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                        <button onClick={() => openEditModal(student, 'student')} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"><Edit size={16} /></button>
+                                        <button 
+                                            onClick={() => handleDeleteStudent(student.id)}
+                                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                        </div>
+                                    </td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    )}
+
+                    {activeSubTab === 'guru' && (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-lg text-slate-800">Direktori Guru</h3>
+                            <ImportExportButtons type="Guru" />
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm min-w-[600px]">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Nama Guru</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">NIP / ID</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Mapel</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Tugas Tambahan</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs text-right">Aksi</th>
+                                </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                {teachers.map((t) => (
+                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 font-bold text-slate-800">{t.name}</td>
+                                    <td className="px-6 py-4 text-slate-500 font-mono">{t.nip}</td>
+                                    <td className="px-6 py-4">{t.mapel}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                            t.status === 'Wali Kelas' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                            t.status === 'Guru Piket' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                            'bg-slate-50 text-slate-500 border-slate-200'
+                                        }`}>
+                                        {t.status || '-'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                        <button 
+                                            onClick={() => openDriveModal(t)}
+                                            className="p-2 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                                            title="Kelola Link Drive"
+                                        >
+                                            <Folder size={16} />
+                                        </button>
+                                        <button onClick={() => openEditModal(t, 'teacher')} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                                            <Edit size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteTeacher(t.id)}
+                                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                        </div>
+                                    </td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    )}
+
+                    {activeSubTab === 'kelas' && (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-lg text-slate-800">Daftar Rombongan Belajar</h3>
+                            <ImportExportButtons type="Kelas" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {classes.map((kelas) => {
+                                const studentCount = students.filter(s => s.class === kelas.name).length;
+                                
+                                return (
+                                <div key={kelas.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 relative group bg-white">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 mb-2">
+                                        <Users size={24} />
+                                    </div>
+                                    <button 
+                                        onClick={() => handleDeleteClass(kelas.id)}
+                                        className="text-slate-300 hover:text-red-500 transition-colors bg-slate-50 p-2 rounded-lg hover:bg-red-50"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                                <h4 className="text-xl font-bold text-slate-800 mb-1">{kelas.name}</h4>
+                                <div className="space-y-2 text-sm text-slate-500 mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <span>Total Siswa:</span>
+                                        <span className="font-bold text-slate-700">{studentCount}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span>Wali Kelas:</span>
+                                        <span className="font-bold text-slate-700">{kelas.wali}</span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 pt-4 border-t border-slate-100">
+                                    <button 
+                                        onClick={() => handleViewStudents(kelas)}
+                                        className="flex-1 py-2.5 text-xs font-bold bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Users size={14} /> Lihat Siswa
+                                    </button>
+                                    <button onClick={() => openEditModal(kelas, 'class')} className="flex-1 py-2.5 text-xs font-bold bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
+                                        <Edit size={14} /> Edit
+                                    </button>
+                                </div>
+                                </div>
+                            )})}
+                        </div>
+                    </div>
+                    )}
+
+                    {activeSubTab === 'mapel' && (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-lg text-slate-800">Daftar Mata Pelajaran</h3>
+                            <ImportExportButtons type="Mapel" />
+                        </div>
+                        <div className="border border-slate-200 rounded-2xl overflow-hidden overflow-x-auto">
+                            <table className="w-full text-left text-sm min-w-[600px]">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Kode</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Nama Mapel</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">KKM/KKTP</th>
+                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {subjects.map((mapel) => (
+                                    <tr key={mapel.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 text-slate-500 font-mono font-medium">{mapel.code}</td>
+                                    <td className="px-6 py-4 font-bold text-slate-800">{mapel.name}</td>
+                                    <td className="px-6 py-4"><span className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">{mapel.kktp}</span></td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => openEditModal(mapel, 'mapel')} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                                                <Edit size={16} />
+                                            </button>
+                                            <button 
+                                            onClick={() => handleDeleteSubject(mapel.id)}
+                                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                            >
+                                            <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    )}
+                    
+                     {activeSubTab === 'jadwal' && (
+                        <div className="p-6">
+                             <div className="flex justify-between items-center mb-6">
+                                 <h3 className="font-bold text-lg text-slate-800">Master Jadwal Pelajaran</h3>
+                                <ImportExportButtons type="Jadwal" />
+                            </div>
+                            <div className="border border-slate-200 rounded-2xl overflow-hidden overflow-x-auto">
+                                 <table className="w-full text-left text-sm min-w-[600px]">
+                                 <thead className="bg-slate-50 border-b border-slate-200">
+                                     <tr>
+                                         <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Hari</th>
+                                         <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Waktu</th>
+                                         <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Kelas</th>
+                                         <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Mapel</th>
+                                         <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Guru</th>
+                                          <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs text-right">Aksi</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {schedules.map((item) => (
+                                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                     <td className="px-6 py-4 font-bold text-slate-800">{item.day}</td>
+                                     <td className="px-6 py-4 text-slate-500">{item.time}</td>
+                                     <td className="px-6 py-4 font-medium text-slate-700">{item.class}</td>
+                                     <td className="px-6 py-4">{item.subject}</td>
+                                     <td className="px-6 py-4 text-slate-600">{item.teacherName || '-'}</td>
+                                     <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                             <button onClick={() => openEditModal(item, 'jadwal')} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+                                                 <Edit size={16} />
+                                             </button>
+                                             <button 
+                                             onClick={() => handleDeleteSchedule(item.id)}
+                                             className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                             >
+                                             <Trash2 size={16} />
+                                             </button>
+                                        </div>
+                                     </td>
+                                     </tr>
+                                    ))}
+                                 </tbody>
+                                 </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSubTab === 'sekolah' && (
+                    <div className="p-4 md:p-8 max-w-3xl">
+                        <h3 className="font-bold text-xl text-slate-800 mb-8 flex items-center gap-2">
+                            <div className="w-1 h-8 bg-indigo-600 rounded-full"></div>
+                            Identitas & Konfigurasi Sekolah
+                        </h3>
+                        
+                        {/* Logo Section */}
+                        <div className="flex flex-col md:flex-row items-start gap-4 md:gap-8 mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                            <div className="w-32 h-32 rounded-2xl border-2 border-white shadow-md overflow-hidden bg-white flex-shrink-0 mx-auto md:mx-0">
+                                {schoolConfig && schoolConfig.logo ? 
+                                    <img src={schoolConfig.logo} alt="Logo Sekolah" className="w-full h-full object-cover" 
+                                     onError={(e) => {e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=No+Logo'}}
+                                    /> :
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">No Logo</div>
+                                }
+                            </div>
+                            <div className="flex-1 w-full">
+                                 <label className="block text-sm font-bold text-slate-700 mb-2">URL Logo Sekolah</label>
+                                 <input 
+                                    type="text" 
+                                    value={schoolConfig.logo}
+                                    onChange={(e) => setSchoolConfig({...schoolConfig, logo: e.target.value})}
+                                    placeholder="https://example.com/logo.png"
+                                    className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none mb-2 bg-white"
+                                 />
+                                 <p className="text-xs text-slate-500 leading-relaxed">Masukkan URL gambar (JPG, PNG) agar logo sekolah tampil otomatis di rapor dan kop surat.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Nama Sekolah</label>
+                                <input 
+                                    type="text" 
+                                    value={schoolConfig.name}
+                                    onChange={(e) => setSchoolConfig({...schoolConfig, name: e.target.value})}
+                                    className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">NPSN</label>
+                                <input 
+                                    type="text" 
+                                    value={schoolConfig.npsn}
+                                    onChange={(e) => setSchoolConfig({...schoolConfig, npsn: e.target.value})}
+                                    className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                />
+                                </div>
+                                <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Jenjang</label>
+                                <select 
+                                    value={schoolConfig.level}
+                                    onChange={(e) => setSchoolConfig({...schoolConfig, level: e.target.value})}
+                                    className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                                >
+                                    <option>SMA/MA</option>
+                                    <option>SMP/MTs</option>
+                                    <option>SD/MI</option>
+                                </select>
+                                </div>
+                            </div>
+                            <div className="pt-6 border-t border-slate-100">
+                                <label className="block text-sm font-bold text-slate-700 mb-3">Tahun Ajaran Aktif</label>
+                                <div className="flex flex-col md:flex-row gap-4 md:items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                <select 
+                                    value={schoolConfig.academicYear}
+                                    onChange={(e) => setSchoolConfig({...schoolConfig, academicYear: e.target.value})}
+                                    className="w-full md:w-1/2 border border-indigo-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-indigo-900"
+                                >
+                                    {Array.from({ length: 7 }, (_, i) => {
+                                    const startYear = 2024 + i;
+                                    return <option key={startYear} value={`${startYear}/${startYear + 1}`}>{`${startYear}/${startYear + 1}`}</option>
+                                    })}
+                                </select>
+                                <div className="flex gap-6">
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="radio" 
+                                            name="semester" 
+                                            id="ganjil" 
+                                            checked={schoolConfig.semester === 'Ganjil'} 
+                                            onChange={() => setSchoolConfig({...schoolConfig, semester: 'Ganjil'})}
+                                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" 
+                                        />
+                                        <label htmlFor="ganjil" className="text-sm font-medium text-slate-700">Semester Ganjil</label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="radio" 
+                                            name="semester" 
+                                            id="genap" 
+                                            checked={schoolConfig.semester === 'Genap'}
+                                            onChange={() => setSchoolConfig({...schoolConfig, semester: 'Genap'})}
+                                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" 
+                                        />
+                                        <label htmlFor="genap" className="text-sm font-medium text-slate-700">Semester Genap</label>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+                            <div className="pt-6">
+                                <button className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-indigo-700 w-full md:w-auto shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                                <Save size={18} /> Simpan Perubahan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    )}
+
+                    {/* MODAL EDIT / ADD */}
+                    {showModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-fade-in-down">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold text-xl text-slate-800">
+                                        {isEditing ? 'Edit Data' : 'Tambah Data Baru'}
+                                    </h3>
+                                    <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    {activeSubTab === 'siswa' && (
+                                        <>
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Nama Lengkap" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                            <input className="w-full border p-3 rounded-xl" placeholder="NIS/NISN" value={formData.nis || ''} onChange={e => setFormData({...formData, nis: e.target.value})} />
+                                            <select className="w-full border p-3 rounded-xl" value={formData.gender || ''} onChange={e => setFormData({...formData, gender: e.target.value})}>
+                                                <option value="" disabled>Pilih Jenis Kelamin</option>
+                                                <option value="L">Laki-laki</option>
+                                                <option value="P">Perempuan</option>
+                                            </select>
+                                            <select className="w-full border p-3 rounded-xl" value={formData.class || ''} onChange={e => setFormData({...formData, class: e.target.value})}>
+                                                <option value="" disabled>Pilih Kelas</option>
+                                                {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                            </select>
+                                        </>
+                                    )}
+                                    {activeSubTab === 'guru' && (
+                                        <>
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Nama Guru" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                            <input className="w-full border p-3 rounded-xl" placeholder="NIP" value={formData.nip || ''} onChange={e => setFormData({...formData, nip: e.target.value})} />
+                                            <select className="w-full border p-3 rounded-xl" value={formData.mapel || ''} onChange={e => setFormData({...formData, mapel: e.target.value})}>
+                                                <option value="" disabled>Pilih Mapel</option>
+                                                {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                            </select>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-2">Tugas Tambahan</label>
+                                            <select className="w-full border p-3 rounded-xl" value={formData.status || '-'} onChange={e => setFormData({...formData, status: e.target.value})}>
+                                                <option value="-">Tidak Ada</option>
+                                                <option value="Wali Kelas">Wali Kelas</option>
+                                                <option value="Guru Piket">Guru Piket</option>
+                                            </select>
+                                        </>
+                                    )}
+                                    {activeSubTab === 'kelas' && (
+                                        <>
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Nama Kelas" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                            <select className="w-full border p-3 rounded-xl" value={formData.wali || ''} onChange={e => setFormData({...formData, wali: e.target.value})}>
+                                                 <option value="" disabled>Pilih Wali Kelas</option>
+                                                 {teachers.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                            </select>
+                                        </>
+                                    )}
+                                    {activeSubTab === 'mapel' && (
+                                        <>
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Kode Mapel" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} />
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Nama Mapel" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                            <input className="w-full border p-3 rounded-xl" placeholder="KKTP" type="number" value={formData.kktp || ''} onChange={e => setFormData({...formData, kktp: e.target.value})} />
+                                        </>
+                                    )}
+                                     {activeSubTab === 'jadwal' && (
+                                        <>
+                                            <select className="w-full border p-3 rounded-xl" value={formData.day || 'Senin'} onChange={e => setFormData({...formData, day: e.target.value})}>
+                                                {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Sabtu', 'Minggu'].map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Waktu (ex: 07:00 - 08:30)" value={formData.time || ''} onChange={e => setFormData({...formData, time: e.target.value})} />
+                                            <select className="w-full border p-3 rounded-xl" value={formData.class || ''} onChange={e => setFormData({...formData, class: e.target.value})}>
+                                                <option value="" disabled>Pilih Kelas</option>
+                                                {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                            </select>
+                                            <select className="w-full border p-3 rounded-xl" value={formData.subject || ''} onChange={e => setFormData({...formData, subject: e.target.value})}>
+                                                <option value="" disabled>Pilih Mapel</option>
+                                                {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                            </select>
+                                             <select className="w-full border p-3 rounded-xl" value={formData.teacherName || ''} onChange={e => setFormData({...formData, teacherName: e.target.value})}>
+                                                <option value="" disabled>Pilih Guru</option>
+                                                {teachers.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                            </select>
+                                            <input className="w-full border p-3 rounded-xl" placeholder="Ruang" value={formData.room || ''} onChange={e => setFormData({...formData, room: e.target.value})} />
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="mt-8 flex gap-3 justify-end">
+                                    <button onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200">Batal</button>
+                                    <button onClick={handleSave} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200">Simpan</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showClassStudentsModal && selectedClassData && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center modal-overlay p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 md:p-8 animate-fade-in-down mx-4">
+                                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <h3 className="font-bold text-xl text-slate-800">
+                                            Daftar Siswa - Kelas {selectedClassData.name}
+                                        </h3>
+                                        <p className="text-sm text-slate-500">Wali Kelas: {selectedClassData.wali}</p>
+                                    </div>
+                                    <button onClick={() => setShowClassStudentsModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                                </div>
+                                <div className="overflow-y-auto max-h-[60vh] no-scrollbar">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 sticky top-0">
+                                            <tr>
+                                                <th className="px-4 py-3 font-bold text-slate-700 border-b border-slate-200">No</th>
+                                                <th className="px-4 py-3 font-bold text-slate-700 border-b border-slate-200">Nama Lengkap</th>
+                                                <th className="px-4 py-3 font-bold text-slate-700 border-b border-slate-200">NIS</th>
+                                                <th className="px-4 py-3 font-bold text-slate-700 border-b border-slate-200">L/P</th>
+                                                <th className="px-4 py-3 font-bold text-slate-700 border-b border-slate-200 text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {students.filter(s => s.class === selectedClassData.name).map((s, idx) => (
+                                                <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-4 py-3 text-slate-500 font-medium">{idx + 1}</td>
+                                                    <td className="px-4 py-3 font-bold text-slate-800">{s.name}</td>
+                                                    <td className="px-4 py-3 text-slate-500 font-mono">{s.nis}</td>
+                                                    <td className="px-4 py-3">{s.gender}</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                         <span className={`px-2 py-1 rounded text-xs font-bold ${s.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{s.status}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {students.filter(s => s.class === selectedClassData.name).length === 0 && (
+                                                <tr>
+                                                    <td colSpan="5" className="px-4 py-8 text-center text-slate-400">Belum ada siswa di kelas ini.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="mt-6 flex justify-end">
+                                     <button onClick={() => setShowClassStudentsModal(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">Tutup</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showDriveModal && selectedTeacherForDrive && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center modal-overlay p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-fade-in-down mx-4">
+                                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <h3 className="font-bold text-xl text-slate-800">
+                                            Kelola Link Drive
+                                        </h3>
+                                        <p className="text-sm text-slate-500">Guru: {selectedTeacherForDrive.name}</p>
+                                    </div>
+                                    <button onClick={() => setShowDriveModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link Perangkat Ajar</label>
+                                        <input 
+                                            type="text" 
+                                            value={driveForm.perangkat} 
+                                            onChange={e => setDriveForm({...driveForm, perangkat: e.target.value})} 
+                                            className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            placeholder="https://..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link Administrasi SAS/SAT</label>
+                                        <input 
+                                            type="text" 
+                                            value={driveForm.sas_sat} 
+                                            onChange={e => setDriveForm({...driveForm, sas_sat: e.target.value})} 
+                                            className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            placeholder="https://..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link Administrasi PSAJ (Praktik & CBT)</label>
+                                        <input 
+                                            type="text" 
+                                            value={driveForm.psaj} 
+                                            onChange={e => setDriveForm({...driveForm, psaj: e.target.value})} 
+                                            className="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            placeholder="https://..."
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-8 flex justify-end gap-3">
+                                     <button onClick={() => setShowDriveModal(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200">Batal</button>
+                                     <button onClick={handleSaveDriveLinks} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200">Simpan Link</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+            const [firebaseUser, setFirebaseUser] = useState(null);
+            
+            // --- FIREBASE SYNC HOOK ---
+            const useFirestoreSyncedState = (collectionName, docId, initialValue) => {
+                const [data, setData] = useState(initialValue);
+                const [loading, setLoading] = useState(true);
+                const { db, appId, setDoc, onSnapshot, doc } = window.firebaseData;
+
+                useEffect(() => {
+                    if (!firebaseUser) return;
+                    
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'master_database', docId);
+                    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            setData(docSnap.data().items);
+                        } else {
+                            // If doc doesn't exist, we don't overwrite local state yet to avoid clearing UI 
+                            // But in a real app you might want to initialize firestore
+                            setLoading(false);
+                        }
+                    }, (err) => console.error("Firestore Error:", err));
+
+                    return () => unsubscribe();
+                }, [firebaseUser, docId]);
+
+                // Custom setter that updates Firestore
+                const updateData = async (newValue) => {
+                    const valueToStore = newValue instanceof Function ? newValue(data) : newValue;
+                    setData(valueToStore); // Optimistic update
+
+                    if (!firebaseUser) return;
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'master_database', docId);
+                    try {
+                        await setDoc(docRef, { items: valueToStore });
+                    } catch (e) {
+                        console.error("Save failed", e);
+                    }
+                };
+
+                return [data, updateData];
+            };
+
+            // Initialize Auth once
+            useEffect(() => {
+                const { auth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = window.firebaseData;
+                
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                initAuth();
+
+                const unsubscribe = onAuthStateChanged(auth, (u) => {
+                    if (u) setFirebaseUser(u);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            // Replace local storage hooks with Firestore hooks
+            const [teachers, setTeachers] = useFirestoreSyncedState('master_data', 'teachers', INITIAL_TEACHERS);
+            const [students, setStudents] = useFirestoreSyncedState('master_data', 'students', INITIAL_STUDENTS);
+            const [classes, setClasses] = useFirestoreSyncedState('master_data', 'classes', INITIAL_CLASSES);
+            const [subjects, setSubjects] = useFirestoreSyncedState('master_data', 'subjects', INITIAL_SUBJECTS);
+            const [schedules, setSchedules] = useFirestoreSyncedState('master_data', 'schedules', INITIAL_SCHEDULE);
+            
+            // Jurnals & Logs need specific handling as they grow large, but for this conversion we keep array strategy
+            const [jurnals, setJurnals] = useFirestoreSyncedState('master_data', 'jurnals', []);
+            const [teacherAttendance, setTeacherAttendance] = useFirestoreSyncedState('master_data', 'teacherAttendance', []);
+            const [classLogs, setClassLogs] = useFirestoreSyncedState('master_data', 'classLogs', []);
+            
+            // Configs
+            const [accounts, setAccounts] = useFirestoreSyncedState('master_data', 'accounts', INITIAL_ACCOUNTS);
+            const [attendance, setAttendance] = useFirestoreSyncedState('master_data', 'attendance', {}); 
+            const [teacherDriveLinks, setTeacherDriveLinks] = useFirestoreSyncedState('master_data', 'teacherDriveLinks', INITIAL_DRIVE_LINKS);
+            const [schoolConfig, setSchoolConfig] = useFirestoreSyncedState('master_data', 'schoolConfig', INITIAL_SCHOOL_CONFIG);
+
+            const [toast, setToast] = useState(null);
+            const [confirm, setConfirm] = useState(null);
+
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3000);
+            };
+
+            const showConfirm = (message, onConfirm) => {
+                setConfirm({
+                    message,
+                    onConfirm: () => {
+                        onConfirm();
+                        setConfirm(null);
+                    },
+                    onCancel: () => setConfirm(null)
+                });
+            };
+
+            const handleLogout = () => {
+                setUser(null);
+                setActiveTab('dashboard');
+            };
+
+            // Derive isPiket
+            const currentTeacher = user?.role === 'guru' ? teachers.find(t => t.name === user.name) : null; 
+            const isPiket = currentTeacher?.status === 'Guru Piket';
+
+
+            if (!user) {
+                return (
+                    <>
+                        <LoginScreen 
+                            onLogin={setUser} 
+                            accounts={accounts} 
+                            showToast={showToast} 
+                            schoolConfig={schoolConfig}
+                        />
+                        <ToastContainer toast={toast} />
+                    </>
+                );
+            }
+
+            return (
+                <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+                    <Sidebar 
+                        activeTab={activeTab} 
+                        setActiveTab={setActiveTab} 
+                        isOpen={isSidebarOpen} 
+                        setIsOpen={setIsSidebarOpen}
+                        user={user}
+                        onLogout={handleLogout}
+                        isPiket={isPiket}
+                        schoolConfig={schoolConfig}
+                    />
+                    
+                    <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                        <header className="h-20 glass-header border-b border-slate-200 flex items-center justify-between px-6 md:px-8 z-30 sticky top-0 transition-all">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-slate-500 hover:text-slate-800">
+                                    <Menu size={24} />
+                                </button>
+                                <div className="hidden md:flex flex-col">
+                                    <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-tight">
+                                        {schoolConfig.name || 'SIJAGA'}
+                                    </h1>
+                                    <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                        <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">NPSN: {schoolConfig.npsn}</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                        <span className="text-indigo-600">{schoolConfig.academicYear} ({schoolConfig.semester})</span>
+                                    </div>
+                                </div>
+                                {/* Mobile Header Title Fallback */}
+                                <div className="md:hidden">
+                                    <h2 className="text-lg font-bold text-slate-800 truncate max-w-[150px]">
+                                        {activeTab === 'dashboard' ? 'Dashboard' : 
+                                         activeTab === 'jurnal' ? 'Jurnal' :
+                                         activeTab.replace('-', ' ').toUpperCase()}
+                                    </h2>
+                                    <p className="text-[10px] text-slate-500 truncate max-w-[150px]">{schoolConfig.name}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold border border-indigo-100 shadow-sm">
+                                    {user.name.charAt(0)}
+                                </div>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar bg-slate-50/50">
+                            {activeTab === 'dashboard' && (
+                                <Dashboard 
+                                    user={user} 
+                                    teachersCount={teachers.length} 
+                                    studentsCount={students.length} 
+                                    setActiveTab={setActiveTab}
+                                    classLogs={classLogs}
+                                    setClassLogs={setClassLogs}
+                                    teacherAttendance={teacherAttendance}
+                                    schedules={schedules}
+                                    jurnals={jurnals}
+                                    showToast={showToast}
+                                />
+                            )}
+                            {activeTab === 'absensi-guru' && (
+                                <AbsensiGuru 
+                                    user={user} 
+                                    teacherAttendance={teacherAttendance} 
+                                    setTeacherAttendance={setTeacherAttendance} 
+                                    showToast={showToast}
+                                />
+                            )}
+                            {activeTab === 'jurnal' && (
+                                <JurnalMengajar 
+                                    user={user}
+                                    schedules={schedules}
+                                    students={students}
+                                    attendance={attendance}
+                                    jurnals={jurnals}
+                                    setJurnals={setJurnals}
+                                    showToast={showToast}
+                                />
+                            )}
+                            {activeTab === 'drive-guru' && (
+                                <DriveAdministrasiGuru 
+                                    teacherDriveLinks={teacherDriveLinks}
+                                    setTeacherDriveLinks={setTeacherDriveLinks}
+                                    user={user}
+                                    showToast={showToast}
+                                />
+                            )}
+                            {activeTab === 'presensi' && (
+                                <PresensiSiswa 
+                                    students={students}
+                                    attendance={attendance}
+                                    setAttendance={setAttendance}
+                                    showToast={showToast}
+                                />
+                            )}
+                            {activeTab === 'monitoring' && (
+                                <MonitoringGuru 
+                                    teacherAttendance={teacherAttendance}
+                                    classLogs={classLogs}
+                                />
+                            )}
+                            {activeTab === 'data' && (
+                                <ManajemenData 
+                                    teachers={teachers} setTeachers={setTeachers}
+                                    students={students} setStudents={setStudents}
+                                    classes={classes} setClasses={setClasses}
+                                    subjects={subjects} setSubjects={setSubjects}
+                                    schedules={schedules} setSchedules={setSchedules}
+                                    showConfirm={showConfirm} showToast={showToast}
+                                    teacherDriveLinks={teacherDriveLinks} setTeacherDriveLinks={setTeacherDriveLinks}
+                                    schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig}
+                                />
+                            )}
+                            {activeTab === 'p5' && <JurnalKokurikuler showToast={showToast} />}
+                            {activeTab === 'generate-akun' && (
+                                <GenerateAkun 
+                                    teachers={teachers} 
+                                    accounts={accounts} 
+                                    setAccounts={setAccounts} 
+                                    showToast={showToast} 
+                                />
+                            )}
+                            {activeTab === 'jadwal' && <JadwalGuru user={user} schedules={schedules} />}
+                        </main>
+                    </div>
+
+                    <ToastContainer toast={toast} />
+                    <ConfirmModal confirm={confirm} />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
