@@ -35,7 +35,6 @@
             let firebaseConfig;
             let appId;
 
-            // --- HYBRID CONFIGURATION LOGIC ---
             if (typeof __firebase_config !== 'undefined') {
                 console.log("Running in Preview Environment: Using Internal Config");
                 firebaseConfig = JSON.parse(__firebase_config);
@@ -72,10 +71,6 @@
                     }
                 } catch (error) {
                     console.error("Authentication Failed", error);
-                    if (error.code === 'auth/custom-token-mismatch') {
-                         console.log("Token mismatch detected, falling back to anonymous auth...");
-                         await signInAnonymously(auth);
-                    }
                 }
             };
             
@@ -219,15 +214,11 @@
             { id: 3, code: 'IPA-F', name: 'Fisika' },
         ];
 
+        // Adjusted Schedule to 1-9 Periods (Example Data)
         const INITIAL_SCHEDULE = [
-            { id: 1, day: 'Senin', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
-            { id: 2, day: 'Senin', time: '08:30 - 10:00', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
-            { id: 3, day: 'Senin', time: '10:30 - 12:00', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'Lab. Komputer', teacherName: 'Bpk. Johny' },
-            { id: 4, day: 'Selasa', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
-            { id: 5, day: 'Selasa', time: '09:00 - 10:30', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'R. 201', teacherName: 'Bpk. Johny' },
-            { id: 6, day: 'Rabu', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
-            { id: 7, day: 'Kamis', time: '08:30 - 10:00', class: 'XI-IPA', subject: 'Projek P5', room: 'Aula', teacherName: 'Ibu Siti Aminah' },
-            { id: 8, day: 'Jumat', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
+            { id: 1, day: 'Senin', time: '07:10 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI', startJam: '1', endJam: '2' },
+            { id: 2, day: 'Senin', time: '08:30 - 09:50', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI', startJam: '3', endJam: '4' },
+            { id: 3, day: 'Senin', time: '10:50 - 12:10', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'Lab. Komputer', teacherName: 'Bpk. Johny', startJam: '6', endJam: '7' },
         ];
 
         const INITIAL_ACCOUNTS = [
@@ -385,7 +376,7 @@
                             </form>
                             
                             <div className="mt-8 text-center text-[10px] md:text-xs text-slate-400">
-                                <p>Demo Access: <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">admin / 123</span> atau <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">guru / 123</span></p>
+                                <p>Selamat Mengerjakan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Selalu Sehat</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Selalu Semangat</span></p>
                             </div>
                         </div>
                     </div>
@@ -465,7 +456,7 @@
                         <div className="flex-1 px-3 py-6 overflow-y-auto no-scrollbar overflow-x-hidden">
                             {menuGroups.map((group, idx) => {
                                 const visibleItems = group.items.filter(item => {
-                                    if (item.id === 'jurnal-piket') return isPiket; // Menampilkan hanya jika guru piket
+                                    if (item.id === 'jurnal-piket') return isPiket; 
                                     if (item.id === 'monitoring') return isManagement; 
                                     if (item.id === 'analisis-siswa') return (user.role === 'admin' || isManagement || isWaliKelas);
                                     return item.roles.includes(user.role);
@@ -484,9 +475,9 @@
                                                     key={item.id}
                                                     onClick={() => { 
                                                         if (item.id === 'asesmen') {
-                                                            window.open('https://erapor-zeta.vercel.app/', '_blank');
+                                                            window.open('https://sisipan.smaalmultazam-mjk.sch.id', '_blank');
                                                         } else if (item.id === 'jurnal-piket') {
-                                                            window.open('https://sigapaltaz.web.app/', '_blank'); // Redirect ke jurnal piket
+                                                            window.open('https://sigapaltaz.web.app/', '_blank'); 
                                                         } else {
                                                             setActiveTab(item.id); 
                                                             setIsOpen(false);
@@ -1794,38 +1785,45 @@
                 return Array.from(names).sort();
             }, [teachers]);
 
+            // --- Updated Time Logic ---
             const calculateTime = (startJam, endJam) => {
-                if (!startJam || !endJam) return '';
-                
                 const start = parseInt(startJam);
                 const end = parseInt(endJam);
                 
-                if (isNaN(start) || isNaN(end) || start > end) return 'Waktu tidak valid';
+                if (!start || !end || isNaN(start) || isNaN(end) || start > end) return 'Waktu tidak valid';
 
-                const startTimeBase = 7 * 60; 
-                const jpDuration = 40; 
-                const breakStart = 10 * 60 + 30; 
-                const breakDuration = 20; 
+                const baseTime = 7 * 60 + 10; // 07:10 in minutes
+                const jp = 40; // 40 minutes per JP
+                const breakDuration = 20; // 20 minutes break
 
-                const getMinutesFromJam = (jamIndex, isEnd = false) => {
-                    let totalMinutes = startTimeBase + ((jamIndex - 1) * jpDuration);
-                    if (isEnd) totalMinutes += jpDuration;
-                    if (totalMinutes > (10 * 60 + 30)) { 
-                         totalMinutes += 20;
+                const getMins = (jam, isEnd) => {
+                    // Calculate base minutes from start of day
+                    let mins = baseTime + ((jam - 1) * jp);
+                    // If calculating end time of a period, add duration
+                    if (isEnd) mins += jp;
+                    
+                    // Logic: Break happens after Jam 5 (10:30-10:50).
+                    // Jam 6 starts at 10:50.
+                    // If we are calculating Start Time: Any period >= 6 must add break duration.
+                    // If we are calculating End Time: Any period >= 6 must add break duration.
+                    // Special case: End of Period 5 is 10:30. No break added. 
+                    
+                    if (jam >= 6) {
+                        mins += breakDuration;
                     }
-                    return totalMinutes;
+                    return mins;
                 };
 
-                const startMins = getMinutesFromJam(start);
-                const endMins = getMinutesFromJam(end, true);
+                const startMins = getMins(start, false);
+                const endMins = getMins(end, true);
 
-                const formatTime = (totalMins) => {
-                    const h = Math.floor(totalMins / 60);
-                    const m = totalMins % 60;
-                    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                const format = (m) => {
+                    const hh = Math.floor(m / 60);
+                    const mm = m % 60;
+                    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
                 };
 
-                return `${formatTime(startMins)} - ${formatTime(endMins)}`;
+                return `${format(startMins)} - ${format(endMins)}`;
             };
 
             useEffect(() => {
@@ -1927,7 +1925,8 @@
                  else if (type === 'Guru') templateData = [{ "Nama Guru": "", "NIP": "", "Mapel": "", "Tugas Tambahan": "" }]; 
                  else if (type === 'Kelas') templateData = [{ "Nama Kelas": "", "Wali Kelas": "" }];
                  else if (type === 'Mapel') templateData = [{ "Kode": "", "Nama Mapel": "" }]; 
-                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Waktu": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
+                 // Updated Template for Jadwal with 1-9 logic
+                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Jam Mulai": "", "Jam Selesai": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
 
                  const ws = XLSX.utils.json_to_sheet(templateData);
                  const wb = XLSX.utils.book_new();
@@ -1984,15 +1983,41 @@
                             code: getVal("Kode"), 
                             name: getVal("Nama Mapel") 
                         };
-                        if (type === 'Jadwal') return { 
-                            id: generateId(), 
-                            day: getVal("Hari"), 
-                            time: getVal("Waktu"), 
-                            class: getVal("Kelas"), 
-                            subject: getVal("Mapel"), 
-                            teacherName: getVal("Guru"), 
-                            room: getVal("Ruang") 
-                        };
+                        if (type === 'Jadwal') {
+                            const startJam = getVal("Jam Mulai");
+                            const endJam = getVal("Jam Selesai");
+                            // Logic for auto-calculating time string on import
+                            let timeString = "";
+                            if (startJam && endJam) {
+                                // Re-use calculation logic here, need access to calculateTime or duplicate
+                                // Duplicating for simplicity inside this closure
+                                const baseTime = 7 * 60 + 10;
+                                const jp = 40;
+                                const breakDuration = 20;
+                                const getMins = (jam, isEnd) => {
+                                    let mins = baseTime + ((jam - 1) * jp);
+                                    if (isEnd) mins += jp;
+                                    if (jam >= 6) mins += breakDuration;
+                                    return mins;
+                                };
+                                const format = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+                                timeString = `${format(getMins(parseInt(startJam), false))} - ${format(getMins(parseInt(endJam), true))}`;
+                            } else {
+                                timeString = getVal("Waktu"); // Fallback to manual string if cols missing
+                            }
+
+                            return { 
+                                id: generateId(), 
+                                day: getVal("Hari"), 
+                                time: timeString,
+                                startJam: startJam,
+                                endJam: endJam,
+                                class: getVal("Kelas"), 
+                                subject: getVal("Mapel"), 
+                                teacherName: getVal("Guru"), 
+                                room: getVal("Ruang") 
+                            };
+                        }
                         return null;
                     }).filter(item => item !== null && (item.name || item.code || item.day)); 
                     
@@ -2660,7 +2685,7 @@
                                                     </div>
                                                 </div>
                                                 <p className="text-[10px] text-slate-400 mt-2 italic">
-                                                    *Otomatis menghitung jam (1 JP = 40 mnt). Istirahat 10:30-10:50 dilompati.
+                                                    *Otomatis menghitung jam (1 JP = 40 mnt, Mulai 07:10). Istirahat (10:30-10:50) otomatis ditambahkan jika melewati Jam ke-6.
                                                 </p>
                                             </div>
 
