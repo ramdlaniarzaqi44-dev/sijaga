@@ -28,11 +28,11 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.initFirebase = async () => {
-            // --- KONFIGURASI FIREBASE ANDA ---
+            // --- KONFIGURASI FIREBASE ---
             const firebaseConfig = {
                 apiKey: "AIzaSyBrKxKE_SsTEaCzOGY6mNUfTnnTGBhDowQ",
                 authDomain: "sijaga-pro.firebaseapp.com",
@@ -58,12 +58,13 @@
                 try {
                     await signInAnonymously(auth);
                 } catch (error) {
-                    console.error("Authentication Failed", error);
+                    console.warn("Offline Mode / Auth Failed:", error.message);
                 }
             };
             
             await doAuth();
 
+            // Expose Firebase to Global Scope for React
             window.firebaseData = { auth, db, appId, doc, setDoc, onSnapshot, collection };
             window.dispatchEvent(new Event('firebase-ready'));
         };
@@ -216,8 +217,8 @@
 
         const INITIAL_ACCOUNTS = [
             { username: 'admin', password: '123', role: 'admin', name: 'Administrator Sekolah' },
-            { username: 'guru', password: '123', role: 'guru', name: 'Bpk. Guru RI', id: 1 },
-            { username: 'kepsek', password: '123', role: 'guru', name: 'Bpk. Kepala Sekolah', id: 4 },
+            { username: 'guru', password: '123', role: 'guru', name: 'Bpk. Guru RI', id: 1, teacherId: 1 },
+            { username: 'kepsek', password: '123', role: 'guru', name: 'Bpk. Kepala Sekolah', id: 4, teacherId: 4 },
         ];
 
         const INITIAL_DRIVE_LINKS = {
@@ -290,17 +291,16 @@
                 let foundAccount = (accounts || []).find(acc => acc.username === username && acc.password === password);
                 
                 if (foundAccount) {
-                    // Create a user object for the session
                     let sessionUser = { ...foundAccount };
 
                     if (sessionUser.role === 'guru') {
-                        // Priority 1: If account has specific teacherId (from generation), use it
+                        // FIX: Prioritaskan teacherId dan pastikan ID selalu konsisten (String)
                         if (sessionUser.teacherId) {
-                            sessionUser.id = sessionUser.teacherId;
-                        } 
-                        // Priority 2: If account has no ID yet (shouldn't happen for hardcoded, but strictly speaking), fallback
-                        else if (!sessionUser.id) {
-                            sessionUser.id = 1; // Default fallback
+                            sessionUser.id = String(sessionUser.teacherId);
+                        } else if (!sessionUser.id) {
+                            sessionUser.id = "1"; // Fallback ke default string "1"
+                        } else {
+                            sessionUser.id = String(sessionUser.id);
                         }
                     }
                     onLogin(sessionUser);
@@ -381,7 +381,7 @@
                             </form>
                             
                             <div className="mt-8 text-center text-[10px] md:text-xs text-slate-400">
-                                <p>Selamat Mengerjakan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Tetap Semangat</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Sehat Selalu</span></p>
+                                <p>Selamat Mengerjakan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Tetap Semangat</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Selalu Jaga Kesehatan</span></p>
                             </div>
                         </div>
                     </div>
@@ -519,6 +519,7 @@
                                 </div>
                                 <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
                                     <p className="text-xs font-semibold truncate text-white">{user.name.split(' ')[0]}</p>
+                                    <p className="text-[10px] text-slate-400 truncate">ID: {user.id}</p>
                                 </div>
                             </div>
                             <button 
@@ -769,24 +770,24 @@
 
                                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
                                     <div className="p-6 border-b border-slate-100 bg-blue-50/50 shrink-0">
-                                        <h4 className="font-bold text-slate-800 flex items-center gap-2"><FileText size={18} className="text-blue-500" /> Catatan Kejadian Guru</h4>
+                                            <h4 className="font-bold text-slate-800 flex items-center gap-2"><FileText size={18} className="text-blue-500" /> Catatan Kejadian Guru</h4>
                                     </div>
                                     <div className="p-6 overflow-y-auto flex-1 no-scrollbar space-y-6">
-                                        {analysisData.teacherNotes.length > 0 ? (
-                                            analysisData.teacherNotes.map((note, idx) => (
-                                                <div key={`note-${idx}`} className="relative pl-6 border-l-2 border-slate-200 last:border-0 pb-1">
-                                                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-400"></div>
-                                                    <div className="mb-1 flex justify-between items-start">
-                                                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{note.subject}</span>
-                                                        <span className="text-[10px] text-slate-400">{note.date}</span>
+                                            {analysisData.teacherNotes.length > 0 ? (
+                                                analysisData.teacherNotes.map((note, idx) => (
+                                                    <div key={`note-${idx}`} className="relative pl-6 border-l-2 border-slate-200 last:border-0 pb-1">
+                                                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-400"></div>
+                                                        <div className="mb-1 flex justify-between items-start">
+                                                            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{note.subject}</span>
+                                                            <span className="text-[10px] text-slate-400">{note.date}</span>
+                                                        </div>
+                                                        <p className="text-sm text-slate-700 italic">"{note.note}"</p>
+                                                        <p className="text-xs text-slate-400 mt-1 font-medium">- {note.teacher}</p>
                                                     </div>
-                                                    <p className="text-sm text-slate-700 italic">"{note.note}"</p>
-                                                    <p className="text-xs text-slate-400 mt-1 font-medium">- {note.teacher}</p>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center text-slate-400 mt-12">Belum ada catatan dari guru.</div>
-                                        )}
+                                                ))
+                                            ) : (
+                                                <div className="text-center text-slate-400 mt-12">Belum ada catatan dari guru.</div>
+                                            )}
                                     </div>
                                 </div>
                             </div>
@@ -815,7 +816,8 @@
                     className: schedule.class,
                     subject: schedule.subject,
                     time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                    scheduleId: schedule.id
+                    scheduleId: schedule.id,
+                    date: todayISO
                 };
                 setClassLogs((prev) => [newLog, ...prev]);
                 showToast(`Berhasil masuk kelas ${schedule.class} - ${schedule.subject}`);
@@ -828,7 +830,7 @@
                 }
                 const mySchedulesToday = schedules.filter(s => s.day === activeDay && s.teacherName === user.name);
                 mySchedulesToday.forEach(sch => {
-                    const hasEntered = classLogs.some(log => log.scheduleId === sch.id);
+                    const hasEntered = classLogs.some(log => log.scheduleId === sch.id && log.date === todayISO);
                     if (!hasEntered) {
                         pendingTasks.push({ 
                             id: `masuk-${sch.id}`, 
@@ -918,7 +920,7 @@
                                 <div className="space-y-4">
                                     {schedules.filter(s => s.day === activeDay).length > 0 ? (
                                         schedules.filter(s => s.day === activeDay).map((item, idx) => {
-                                            const isEntered = classLogs.some(log => log.scheduleId === item.id);
+                                            const isEntered = classLogs.some(log => log.scheduleId === item.id && log.date === todayISO);
                                             return (
                                                 <div key={`${item.id}-${idx}`} className="flex items-center p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition-colors group">
                                                     <div className="w-16 text-center"><span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Jam</span><span className="text-lg font-bold text-indigo-600">{(item.time || '').split(' - ')[0] || '--:--'}</span></div>
@@ -936,7 +938,7 @@
                                                         ) : (
                                                             item.teacherName === user.name && (
                                                                 <button onClick={() => handleMasukKelas(item)} className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
-                                                                    <LogIn size={14} /> Masuk Kelas
+                                                                        <LogIn size={14} /> Masuk Kelas
                                                                 </button>
                                                             )
                                                         )}
@@ -952,10 +954,10 @@
                             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                                 <h3 className="font-bold text-xl text-slate-800 mb-6">Aktivitas Cepat</h3>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <button onClick={() => window.open('https://sisipan.smaalmultazam-mjk.sch.id', '_blank')} className="p-5 bg-blue-50 text-blue-700 rounded-2xl text-sm font-bold hover:bg-blue-100 flex flex-col items-center gap-3 border border-blue-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><Plus size={24} /></div>Input Nilai</button>
+                                    <button onClick={() => window.open('https://erapor-zeta.vercel.app/', '_blank')} className="p-5 bg-blue-50 text-blue-700 rounded-2xl text-sm font-bold hover:bg-blue-100 flex flex-col items-center gap-3 border border-blue-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><Plus size={24} /></div>Input Nilai</button>
                                     <button onClick={() => setActiveTab('presensi')} className="p-5 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-bold hover:bg-emerald-100 flex flex-col items-center gap-3 border border-emerald-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><UserCheck size={24} /></div>Presensi</button>
                                     <button onClick={() => setActiveTab('drive-guru')} className="p-5 bg-purple-50 text-purple-700 rounded-2xl text-sm font-bold hover:bg-purple-100 flex flex-col items-center gap-3 border border-purple-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><FileText size={24} /></div>Upload Admin</button>
-                                    <button onClick={() => window.open('https://sisipan.smaalmultazam-mjk.sch.id', '_blank')} className="p-5 bg-orange-50 text-orange-700 rounded-2xl text-sm font-bold hover:bg-orange-100 flex flex-col items-center gap-3 border border-orange-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><BarChart3 size={24} /></div>Analisis</button>
+                                    <button onClick={() => window.open('https://erapor-zeta.vercel.app/', '_blank')} className="p-5 bg-orange-50 text-orange-700 rounded-2xl text-sm font-bold hover:bg-orange-100 flex flex-col items-center gap-3 border border-orange-100 transition-transform hover:scale-105"><div className="p-3 bg-white rounded-full shadow-sm"><BarChart3 size={24} /></div>Analisis</button>
                                 </div>
                             </div>
                         </div>
@@ -1090,8 +1092,8 @@
                             <div className="w-full mt-4 space-y-3">
                                 {(teacherAttendance || []).filter(a => a.teacherName === user.name).slice(-3).reverse().map((log, idx) => (
                                     <div key={`att-${log.id}-${idx}`} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-sm">
-                                        <span className="text-slate-600">{log.date}</span>
-                                        <span className="font-bold text-emerald-600">{log.time}</span>
+                                            <span className="text-slate-600">{log.date}</span>
+                                            <span className="font-bold text-emerald-600">{log.time}</span>
                                     </div>
                                 ))}
                                 {(teacherAttendance || []).filter(a => a.teacherName === user.name).length === 0 && <p className="text-slate-400 text-sm">Belum ada data.</p>}
@@ -1337,7 +1339,7 @@
             return (
                 <div className="space-y-6">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div>
+                        <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catat harian kegiatan pembelajaran di kelas</p></div></div>
                         <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto">
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-2 hidden md:block">Filter:</span>
                             <input type="date" value={dateInputValue} onChange={handleDateChange} className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none font-bold flex-1 md:flex-initial" />
@@ -1501,13 +1503,15 @@
 
         const DriveAdministrasiGuru = ({ teacherDriveLinks, setTeacherDriveLinks, user, showToast }) => {
             const folders = [
-                { id: 'perangkat', title: 'Perangkat Ajar', color: 'bg-blue-100 text-blue-600' },
-                { id: 'sas_sat', title: 'Administrasi SAS/SAT', color: 'bg-emerald-100 text-emerald-600' },
-                { id: 'psaj', title: 'Administrasi PSAJ (Praktik & CBT)', color: 'bg-orange-100 text-orange-600' },
+                { id: 'perangkat', title: 'Perangkat Ajar', color: 'bg-blue-100 text-blue-600', hoverColor: 'group-hover:text-blue-600' },
+                { id: 'sas_sat', title: 'Administrasi SAS/SAT', color: 'bg-emerald-100 text-emerald-600', hoverColor: 'group-hover:text-emerald-600' },
+                { id: 'psaj', title: 'Administrasi PSAJ', color: 'bg-orange-100 text-orange-600', hoverColor: 'group-hover:text-orange-600' },
             ];
 
+            // FIX: Ambil links menggunakan String(user.id) untuk keamanan tipe data
+            const userLinks = teacherDriveLinks[String(user.id)] || {};
+
             const handleFolderClick = (folderId) => {
-                const userLinks = teacherDriveLinks[user.id];
                 if (userLinks && userLinks[folderId]) {
                     window.open(userLinks[folderId], '_blank');
                 } else {
@@ -1530,21 +1534,38 @@
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {folders.map(folder => (
-                            <button 
-                                key={folder.id}
-                                onClick={() => handleFolderClick(folder.id)}
-                                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col items-center justify-center text-center group h-48"
-                            >
-                                <div className={`p-4 rounded-full mb-4 transition-transform group-hover:scale-110 ${folder.color}`}>
-                                    <Folder size={48} />
-                                </div>
-                                <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{folder.title}</h3>
-                                <span className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                    <Link size={12} /> Buka Folder
-                                </span>
-                            </button>
-                        ))}
+                        {folders.map(folder => {
+                            const hasLink = userLinks[folder.id] && userLinks[folder.id].length > 5;
+                            
+                            return (
+                                <button 
+                                    key={folder.id}
+                                    onClick={() => handleFolderClick(folder.id)}
+                                    className={`relative p-6 rounded-2xl border shadow-sm transition-all duration-300 flex flex-col items-center justify-center text-center group h-48 overflow-hidden
+                                        ${hasLink 
+                                            ? 'bg-white border-slate-200 hover:shadow-lg cursor-pointer' 
+                                            : 'bg-slate-50 border-slate-200 opacity-75 cursor-not-allowed hover:bg-slate-100'
+                                        }`}
+                                >
+                                    {/* Status Badge */}
+                                    <div className={`absolute top-4 right-4 px-2 py-0.5 rounded-md text-[10px] font-bold border
+                                        ${hasLink ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
+                                        {hasLink ? 'TERHUBUNG' : 'KOSONG'}
+                                    </div>
+
+                                    <div className={`p-4 rounded-full mb-4 transition-transform ${hasLink ? 'group-hover:scale-110' : ''} 
+                                        ${hasLink ? folder.color : 'bg-slate-200 text-slate-400'}`}>
+                                        <Folder size={48} />
+                                    </div>
+                                    <h3 className={`font-bold transition-colors ${hasLink ? `text-slate-800 ${folder.hoverColor}` : 'text-slate-500'}`}>
+                                        {folder.title}
+                                    </h3>
+                                    <span className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                        {hasLink ? <><Link size={12} /> Buka Folder</> : <><XCircle size={12} /> Belum ada link</>}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             );
@@ -1780,6 +1801,7 @@
             const [driveForm, setDriveForm] = useState({ perangkat: '', sas_sat: '', psaj: '' });
             const [selectedTeacherForDrive, setSelectedTeacherForDrive] = useState(null);
             const [formData, setFormData] = useState({});
+            const fileInputRef = useRef(null);
 
              const uniqueTeacherNames = useMemo(() => {
                 const names = new Set();
@@ -1851,7 +1873,7 @@
 
              const openDriveModal = (teacher) => {
                 setSelectedTeacherForDrive(teacher);
-                const links = teacherDriveLinks[teacher.id] || { perangkat: '', sas_sat: '', psaj: '' };
+                const links = teacherDriveLinks[String(teacher.id)] || { perangkat: '', sas_sat: '', psaj: '' };
                 setDriveForm(links);
                 setShowDriveModal(true);
             };
@@ -1859,7 +1881,7 @@
             const handleSaveDriveLinks = () => {
                 setTeacherDriveLinks((prev) => ({
                     ...prev,
-                    [selectedTeacherForDrive.id]: driveForm
+                    [String(selectedTeacherForDrive.id)]: driveForm
                 }));
                 setShowDriveModal(false);
                 showToast(`Link Drive untuk ${selectedTeacherForDrive.name} berhasil disimpan!`);
@@ -1886,8 +1908,8 @@
                             if (index !== -1) {
                                 const existing = prev[index];
                                 const mergeStrings = (str1, str2) => {
-                                    const arr1 = str1 ? str1.split(',').map(s => s.trim()) : [];
-                                    const arr2 = str2 ? str2.split(',').map(s => s.trim()) : [];
+                                    const arr1 = str1 ? String(str1).split(',').map(s => s.trim()) : [];
+                                    const arr2 = str2 ? String(str2).split(',').map(s => s.trim()) : [];
                                     const combined = [...new Set([...arr1, ...arr2])].filter(x => x && x !== '-');
                                     return combined.length > 0 ? combined.join(', ') : '-';
                                 };
@@ -1917,22 +1939,18 @@
             };
 
             const handleDownloadTemplate = (type) => {
-                 let templateData = [];
-                 if (type === 'Siswa') templateData = [{ "Nama Lengkap": "", "NIS": "", "L/P": "", "Kelas": "", "Status": "Aktif" }];
-                 else if (type === 'Guru') templateData = [{ "Nama Guru": "", "NIP": "", "Mapel": "", "Tugas Tambahan": "" }]; 
-                 else if (type === 'Kelas') templateData = [{ "Nama Kelas": "", "Wali Kelas": "" }];
-                 else if (type === 'Mapel') templateData = [{ "Kode": "", "Nama Mapel": "" }]; 
-                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Waktu": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
+                const wsData = [];
+                if (type === 'Siswa') wsData.push(['Nama Lengkap', 'NIS', 'L/P', 'Kelas', 'Status']);
+                if (type === 'Guru') wsData.push(['Nama Guru', 'NIP', 'Mapel', 'Tugas Tambahan']);
+                if (type === 'Kelas') wsData.push(['Nama Kelas', 'Wali Kelas']);
+                if (type === 'Mapel') wsData.push(['Kode', 'Nama Mapel']);
+                if (type === 'Jadwal') wsData.push(['Hari', 'Waktu', 'Kelas', 'Mapel', 'Guru', 'Ruang']);
 
-                 const ws = XLSX.utils.json_to_sheet(templateData);
-                 const wb = XLSX.utils.book_new();
-                 XLSX.utils.book_append_sheet(wb, ws, "Template");
-                 
-                 XLSX.writeFile(wb, `Template_${type}.xlsx`);
-                 showToast(`Template Excel ${type} berhasil diunduh.`, "success");
-            }
-            
-            const fileInputRef = useRef(null);
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Template");
+                XLSX.writeFile(wb, `Template_${type}.xlsx`);
+            };
 
             const handleImportClick = () => {
                 fileInputRef.current.click();
