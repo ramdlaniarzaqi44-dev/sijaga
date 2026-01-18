@@ -32,27 +32,19 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.initFirebase = async () => {
-            let firebaseConfig;
-            let appId;
+            // --- KONFIGURASI FIREBASE ANDA ---
+            const firebaseConfig = {
+                apiKey: "AIzaSyBrKxKE_SsTEaCzOGY6mNUfTnnTGBhDowQ",
+                authDomain: "sijaga-pro.firebaseapp.com",
+                projectId: "sijaga-pro",
+                storageBucket: "sijaga-pro.firebasestorage.app",
+                messagingSenderId: "570764007648",
+                appId: "1:570764007648:web:6e3ec32d3dd99c8ee29885"
+            };
 
-            if (typeof __firebase_config !== 'undefined') {
-                console.log("Running in Preview Environment: Using Internal Config");
-                firebaseConfig = JSON.parse(__firebase_config);
-                appId = __app_id || 'default-app-id';
-            } else {
-                console.log("Running in Production: Using SIJAGA-PRO Config");
-                firebaseConfig = {
-                    apiKey: "AIzaSyBrKxKE_SsTEaCzOGY6mNUfTnnTGBhDowQ",
-                    authDomain: "sijaga-pro.firebaseapp.com",
-                    projectId: "sijaga-pro",
-                    storageBucket: "sijaga-pro.firebasestorage.app",
-                    messagingSenderId: "570764007648",
-                    appId: "1:570764007648:web:6e3ec32d3dd99c8ee29885"
-                };
-                appId = 'sijaga-pro';
-            }
-
+            const appId = 'sijaga-pro';
             let app;
+            
             try {
                 app = initializeApp(firebaseConfig);
             } catch (e) {
@@ -64,11 +56,7 @@
 
             const doAuth = async () => {
                 try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token && typeof __firebase_config !== 'undefined') {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
                 } catch (error) {
                     console.error("Authentication Failed", error);
                 }
@@ -187,6 +175,7 @@
             LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link, Wifi, BrainCircuit, FileBadge
         } = IconComponents;
 
+        // --- Mock Data & Constants ---
         const INITIAL_STUDENTS = [
             { id: 1, name: 'Ahmad Dahlan', nis: '2024001', gender: 'L', class: 'X-A', status: 'Aktif' },
             { id: 2, name: 'Budi Santoso', nis: '2024002', gender: 'L', class: 'X-A', status: 'Aktif' },
@@ -214,11 +203,15 @@
             { id: 3, code: 'IPA-F', name: 'Fisika' },
         ];
 
-        // Adjusted Schedule to 1-9 Periods (Example Data)
         const INITIAL_SCHEDULE = [
-            { id: 1, day: 'Senin', time: '07:10 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI', startJam: '1', endJam: '2' },
-            { id: 2, day: 'Senin', time: '08:30 - 09:50', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI', startJam: '3', endJam: '4' },
-            { id: 3, day: 'Senin', time: '10:50 - 12:10', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'Lab. Komputer', teacherName: 'Bpk. Johny', startJam: '6', endJam: '7' },
+            { id: 1, day: 'Senin', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
+            { id: 2, day: 'Senin', time: '08:30 - 10:00', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
+            { id: 3, day: 'Senin', time: '10:30 - 12:00', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'Lab. Komputer', teacherName: 'Bpk. Johny' },
+            { id: 4, day: 'Selasa', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
+            { id: 5, day: 'Selasa', time: '09:00 - 10:30', class: 'XI-IPA', subject: 'Matematika Lanjut', room: 'R. 201', teacherName: 'Bpk. Johny' },
+            { id: 6, day: 'Rabu', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
+            { id: 7, day: 'Kamis', time: '08:30 - 10:00', class: 'XI-IPA', subject: 'Projek P5', room: 'Aula', teacherName: 'Ibu Siti Aminah' },
+            { id: 8, day: 'Jumat', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
         ];
 
         const INITIAL_ACCOUNTS = [
@@ -294,11 +287,23 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                let user = accounts.find(acc => acc.username === username && acc.password === password);
-                if (user && user.role === 'guru' && !user.id) user = {...user, id: 1};
+                let foundAccount = (accounts || []).find(acc => acc.username === username && acc.password === password);
+                
+                if (foundAccount) {
+                    // Create a user object for the session
+                    let sessionUser = { ...foundAccount };
 
-                if (user) {
-                    onLogin(user);
+                    if (sessionUser.role === 'guru') {
+                        // Priority 1: If account has specific teacherId (from generation), use it
+                        if (sessionUser.teacherId) {
+                            sessionUser.id = sessionUser.teacherId;
+                        } 
+                        // Priority 2: If account has no ID yet (shouldn't happen for hardcoded, but strictly speaking), fallback
+                        else if (!sessionUser.id) {
+                            sessionUser.id = 1; // Default fallback
+                        }
+                    }
+                    onLogin(sessionUser);
                 } else {
                     setError('Username atau Password salah!');
                     showToast('Login Gagal: Periksa username dan password', 'error');
@@ -376,7 +381,7 @@
                             </form>
                             
                             <div className="mt-8 text-center text-[10px] md:text-xs text-slate-400">
-                                <p>Selamat Mengerjakan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Selalu Sehat</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Selalu Semangat</span></p>
+                                <p>Selamat Mengerjakan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Tetap Semangat</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Sehat Selalu</span></p>
                             </div>
                         </div>
                     </div>
@@ -542,7 +547,7 @@
             </div>
         );
 
-        const JurnalKokurikuler = () => (
+        const JurnalKokurikuler = ({ showToast }) => (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
                 <div className="bg-indigo-50 p-4 rounded-full mb-4">
                     <GraduationCap size={40} className="text-indigo-600" />
@@ -578,7 +583,7 @@
             useEffect(() => {
                 if (isWaliKelas && managedClass) {
                     setSelectedClass(managedClass);
-                } else if ((isManagement || user.role === 'admin') && classes.length > 0 && !selectedClass) {
+                } else if ((isManagement || user.role === 'admin') && (classes || []).length > 0 && !selectedClass) {
                     setSelectedClass(classes[0].name);
                 }
             }, [classes, isWaliKelas, managedClass, isManagement, user.role]);
@@ -586,11 +591,11 @@
             const analysisData = useMemo(() => {
                 if (!selectedClass) return null;
 
-                const classStudents = students.filter(s => s.class === selectedClass);
+                const classStudents = (students || []).filter(s => s.class === selectedClass);
                 const totalStudents = classStudents.length;
                 if (totalStudents === 0) return { error: "Belum ada data siswa di kelas ini." };
 
-                const relevantJournals = jurnals.filter(j => j.class === selectedClass);
+                const relevantJournals = (jurnals || []).filter(j => j.class === selectedClass);
                 
                 const absenceFrequency = {};
                 let totalPossiblePresent = 0;
@@ -688,7 +693,7 @@
                                         className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:bg-white focus:border-purple-500 font-bold cursor-pointer"
                                     >
                                         <option value="" disabled>Pilih Kelas</option>
-                                        {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                        {(classes || []).map((c, index) => <option key={`${c.id}-${index}`} value={c.name}>{c.name}</option>)}
                                     </select>
                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
                                         <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
@@ -733,7 +738,7 @@
                                 </h3>
                                 <p className="text-indigo-50 leading-relaxed text-lg relative z-10 font-light">
                                     {analysisData.description.split('. ').map((sentence, i) => (
-                                        <span key={i} dangerouslySetInnerHTML={{ __html: sentence + (sentence.endsWith('.') ? '' : '. ') }} />
+                                        <span key={`desc-${i}`} dangerouslySetInnerHTML={{ __html: sentence + (sentence.endsWith('.') ? '' : '. ') }} />
                                     ))}
                                 </p>
                             </div>
@@ -749,7 +754,7 @@
                                                 <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Siswa</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jml. Absen</th></tr></thead>
                                                 <tbody className="divide-y divide-slate-100">
                                                     {analysisData.atRiskStudents.slice(0, 5).map((s, idx) => (
-                                                        <tr key={idx} className="hover:bg-slate-50">
+                                                        <tr key={`risk-${s.name}-${idx}`} className="hover:bg-slate-50">
                                                             <td className="px-6 py-3 font-medium text-slate-800">{s.name}</td>
                                                             <td className="px-6 py-3 text-right font-bold text-red-600">{s.count}x</td>
                                                         </tr>
@@ -769,7 +774,7 @@
                                     <div className="p-6 overflow-y-auto flex-1 no-scrollbar space-y-6">
                                         {analysisData.teacherNotes.length > 0 ? (
                                             analysisData.teacherNotes.map((note, idx) => (
-                                                <div key={idx} className="relative pl-6 border-l-2 border-slate-200 last:border-0 pb-1">
+                                                <div key={`note-${idx}`} className="relative pl-6 border-l-2 border-slate-200 last:border-0 pb-1">
                                                     <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-400"></div>
                                                     <div className="mb-1 flex justify-between items-start">
                                                         <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{note.subject}</span>
@@ -915,7 +920,7 @@
                                         schedules.filter(s => s.day === activeDay).map((item, idx) => {
                                             const isEntered = classLogs.some(log => log.scheduleId === item.id);
                                             return (
-                                                <div key={idx} className="flex items-center p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition-colors group">
+                                                <div key={`${item.id}-${idx}`} className="flex items-center p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition-colors group">
                                                     <div className="w-16 text-center"><span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Jam</span><span className="text-lg font-bold text-indigo-600">{(item.time || '').split(' - ')[0] || '--:--'}</span></div>
                                                     <div className="h-12 w-px bg-slate-200 mx-6"></div>
                                                     <div>
@@ -963,7 +968,7 @@
             const [status, setStatus] = useState('idle'); 
             const [location, setLocation] = useState(null);
             const today = new Date().toISOString().split('T')[0];
-            const isPresent = teacherAttendance.find(a => a.teacherName === user.name && a.date === today);
+            const isPresent = (teacherAttendance || []).find(a => a.teacherName === user.name && a.date === today);
 
             // New helper for Reverse Geocoding
             const getAddressName = async (latitude, longitude) => {
@@ -1024,7 +1029,7 @@
             const activeDay = days[todayDate.getDay()];
             
             // Filter schedules for today & current teacher
-            const todaysSchedules = schedules.filter(s => s.day === activeDay && s.teacherName === user.name).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+            const todaysSchedules = (schedules || []).filter(s => s.day === activeDay && s.teacherName === user.name).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
             const handleMasukKelas = (schedule) => {
                 const timestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -1062,7 +1067,7 @@
                                     <h4 className="text-lg font-bold text-emerald-800 mb-1">Sudah Absen Masuk</h4>
                                     <p className="text-emerald-600 text-sm font-bold">Pukul: {isPresent.time}</p>
                                     <p className="text-emerald-600 text-xs mt-2 flex items-center justify-center gap-1">
-                                        <MapPin size={12} /> {isPresent.location.name || `${isPresent.location.latitude.toFixed(4)}, ${isPresent.location.longitude.toFixed(4)}`}
+                                        <MapPin size={12} /> {isPresent.location?.name || 'Lokasi Terdeteksi'}
                                     </p>
                                 </div>
                             ) : (
@@ -1083,13 +1088,13 @@
                             <div className="bg-white p-4 rounded-full shadow-sm mb-4"><Clock size={32} className="text-slate-400" /></div>
                             <h4 className="text-lg font-bold text-slate-700 mb-2">Riwayat Absensi</h4>
                             <div className="w-full mt-4 space-y-3">
-                                {teacherAttendance.filter(a => a.teacherName === user.name).slice(-3).reverse().map((log, idx) => (
-                                    <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-sm">
+                                {(teacherAttendance || []).filter(a => a.teacherName === user.name).slice(-3).reverse().map((log, idx) => (
+                                    <div key={`att-${log.id}-${idx}`} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-sm">
                                         <span className="text-slate-600">{log.date}</span>
                                         <span className="font-bold text-emerald-600">{log.time}</span>
                                     </div>
                                 ))}
-                                {teacherAttendance.filter(a => a.teacherName === user.name).length === 0 && <p className="text-slate-400 text-sm">Belum ada data.</p>}
+                                {(teacherAttendance || []).filter(a => a.teacherName === user.name).length === 0 && <p className="text-slate-400 text-sm">Belum ada data.</p>}
                             </div>
                         </div>
                     </div>
@@ -1103,11 +1108,11 @@
                         
                         {todaysSchedules.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {todaysSchedules.map((schedule) => {
-                                    const isEntered = classLogs.some(log => log.scheduleId === schedule.id && log.date === today);
+                                {todaysSchedules.map((schedule, idx) => {
+                                    const isEntered = (classLogs || []).some(log => log.scheduleId === schedule.id && log.date === today);
                                     
                                     return (
-                                        <div key={schedule.id} className={`p-5 rounded-xl border transition-all ${isEntered ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:border-blue-400 shadow-sm'}`}>
+                                        <div key={`${schedule.id}-${idx}`} className={`p-5 rounded-xl border transition-all ${isEntered ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:border-blue-400 shadow-sm'}`}>
                                             <div className="flex justify-between items-start mb-2">
                                                 <span className="font-bold text-slate-800 text-lg">{schedule.class}</span>
                                                 <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">{schedule.time || '--:--'}</span>
@@ -1140,7 +1145,7 @@
 
         const JadwalGuru = ({ user, schedules }) => {
             const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const mySchedules = schedules.filter(s => s.teacherName === user.name);
+            const mySchedules = (schedules || []).filter(s => s.teacherName === user.name);
 
             return (
                 <div className="space-y-6">
@@ -1157,21 +1162,20 @@
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {days.map(day => {
-                            // Defensive coding: (a.time || '') untuk mencegah crash jika time undefined
+                        {days.map((day, dIdx) => {
                             const dailySchedules = mySchedules.filter(s => s.day === day).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
                             if (dailySchedules.length === 0) return null;
 
                             return (
-                                <div key={day} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div key={`${day}-${dIdx}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                     <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                                         <h3 className="font-bold text-slate-800">{day}</h3>
                                     </div>
                                     <div className="divide-y divide-slate-100">
                                         {dailySchedules.map((schedule, idx) => (
-                                            <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
+                                            <div key={`${schedule.id}-${idx}`} className="p-4 hover:bg-slate-50 transition-colors">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="font-bold text-indigo-600 font-mono text-sm">{schedule.time || '--:--'}</span>
+                                                    <span className="font-bold text-indigo-600 font-mono text-sm">{schedule.time}</span>
                                                     <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{schedule.class}</span>
                                                 </div>
                                                 <h4 className="font-bold text-slate-700">{schedule.subject}</h4>
@@ -1217,7 +1221,7 @@
             }, [form]);
 
             const getAbsentStudents = (className) => {
-                const classStudents = students.filter(s => s.class === className);
+                const classStudents = (students || []).filter(s => s.class === className);
                 const absent = classStudents.filter(s => {
                     const status = attendance[s.id];
                     return status && status !== 'Hadir';
@@ -1234,7 +1238,7 @@
 
             const handleSelectSchedule = (schedule) => {
                 setSelectedSchedule(schedule);
-                const existingJournal = jurnals.find(j => j.scheduleId === schedule.id && j.date === selectedDateLocale);
+                const existingJournal = (jurnals || []).find(j => j.scheduleId === schedule.id && j.date === selectedDateLocale);
                 if (existingJournal) {
                     setForm({
                         tujuan: existingJournal.tujuan,
@@ -1263,7 +1267,7 @@
                 };
 
                 setJurnals((prev) => {
-                    const existingIndex = prev.findIndex(j => j.scheduleId === selectedSchedule.id && j.date === selectedDateLocale);
+                    const existingIndex = (prev || []).findIndex(j => j.scheduleId === selectedSchedule.id && j.date === selectedDateLocale);
                     if (existingIndex > -1) {
                         const updated = [...prev];
                         updated[existingIndex] = { ...updated[existingIndex], ...journalData };
@@ -1271,7 +1275,7 @@
                         return updated;
                     } else {
                         showToast("Jurnal baru berhasil disimpan!");
-                        return [...prev, { ...journalData, id: Date.now() }];
+                        return [...(prev || []), { ...journalData, id: Date.now() }];
                     }
                 });
                 setSelectedSchedule(null);
@@ -1328,7 +1332,7 @@
             };
 
 
-            const dailySchedules = schedules.filter(s => s.day === activeDay);
+            const dailySchedules = (schedules || []).filter(s => s.day === activeDay);
 
             return (
                 <div className="space-y-6">
@@ -1348,11 +1352,11 @@
                             <div className="flex items-center justify-between mb-2"><h3 className="font-bold text-lg text-slate-700">Jadwal Hari {activeDay}, {selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</h3></div>
                             {dailySchedules.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {dailySchedules.map((item) => {
-                                        const isFilled = jurnals.some(j => j.scheduleId === item.id && j.date === selectedDateLocale);
+                                    {dailySchedules.map((item, idx) => {
+                                        const isFilled = (jurnals || []).some(j => j.scheduleId === item.id && j.date === selectedDateLocale);
                                         return (
-                                        <div key={item.id} onClick={() => handleSelectSchedule(item)} className={`bg-white p-6 rounded-xl border cursor-pointer transition-all hover:shadow-md group ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-400'}`}>
-                                            <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${isFilled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>{item.time || '--:--'}</span><span className={`text-xs ${isFilled ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>{isFilled ? 'Sudah Diisi (Klik untuk Edit)' : 'Klik untuk isi'}</span></div>
+                                        <div key={`${item.id}-${idx}`} onClick={() => handleSelectSchedule(item)} className={`bg-white p-6 rounded-xl border cursor-pointer transition-all hover:shadow-md group ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-400'}`}>
+                                            <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${isFilled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>{item.time}</span><span className={`text-xs ${isFilled ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>{isFilled ? 'Sudah Diisi (Klik untuk Edit)' : 'Klik untuk isi'}</span></div>
                                             <h4 className="font-bold text-lg text-slate-800">{item.subject}</h4>
                                             <p className="text-slate-500 text-sm">Kelas {item.class} • Ruang {item.room}</p>
                                         </div>
@@ -1369,7 +1373,7 @@
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                 <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Hari / Tanggal</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{activeDay}, {selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
                                 <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mata Pelajaran</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{selectedSchedule.subject}</div></div>
-                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Jam Ke-</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{selectedSchedule.time || '-'}</div></div>
+                                <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Jam Ke-</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{selectedSchedule.time}</div></div>
                                 <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Siswa Tidak Hadir</label><div className="p-3 bg-red-50 text-red-700 font-medium border border-red-100 rounded-xl">{getAbsentStudents(selectedSchedule.class)}</div><p className="text-[10px] text-slate-400 mt-1">*Data diambil otomatis dari menu Presensi Siswa</p></div>
                             </div>
 
@@ -1406,14 +1410,14 @@
             const todayLocale = today.toLocaleDateString('id-ID');
 
             const teacherStatus = useMemo(() => {
-                const todaysSchedules = schedules.filter(s => s.day === activeDay);
+                const todaysSchedules = (schedules || []).filter(s => s.day === activeDay);
                 
                 const activeTeachers = [...new Set(todaysSchedules.map(s => s.teacherName))];
                 
                 return activeTeachers.map(teacherName => {
                     const teacherSchedules = todaysSchedules.filter(s => s.teacherName === teacherName);
                     const filledCount = teacherSchedules.reduce((acc, sch) => {
-                         const hasFilled = jurnals.some(j => j.scheduleId === sch.id && j.date === todayLocale);
+                         const hasFilled = (jurnals || []).some(j => j.scheduleId === sch.id && j.date === todayLocale);
                          return acc + (hasFilled ? 1 : 0);
                     }, 0);
                     
@@ -1445,7 +1449,7 @@
                                     <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Guru</th><th className="px-6 py-3 font-semibold text-slate-600 text-center">Jadwal Hari Ini</th><th className="px-6 py-3 font-semibold text-slate-600 text-center">Jurnal Terisi</th><th className="px-6 py-3 font-semibold text-slate-600">Status</th></tr></thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {teacherStatus.map((stat, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50">
+                                            <tr key={`stat-${idx}`} className="hover:bg-slate-50">
                                                 <td className="px-6 py-4 font-medium text-slate-800">{stat.name}</td>
                                                 <td className="px-6 py-4 text-center"><span className="bg-slate-100 px-2 py-1 rounded font-bold text-slate-600">{stat.totalClasses} Kelas</span></td>
                                                 <td className="px-6 py-4 text-center"><span className={`px-2 py-1 rounded font-bold ${stat.filledClasses === stat.totalClasses ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{stat.filledClasses}</span></td>
@@ -1470,10 +1474,10 @@
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-slate-100 bg-purple-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-purple-800 flex items-center gap-2"><MapPin size={20} /> Kehadiran di Sekolah</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-purple-600 border border-purple-100">Hari Ini</span></div>
                             <div className="p-0">
-                                {teacherAttendance.length > 0 ? (
+                                {(teacherAttendance || []).length > 0 ? (
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Nama Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Waktu</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Status</th></tr></thead>
-                                        <tbody className="divide-y divide-slate-100">{teacherAttendance.map((log) => (<tr key={log.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-medium text-slate-800">{log.teacherName}</td><td className="px-6 py-4 text-slate-500">{log.time}</td><td className="px-6 py-4 text-right"><span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span></td></tr>))}</tbody>
+                                        <tbody className="divide-y divide-slate-100">{(teacherAttendance || []).map((log, idx) => (<tr key={`att-${log.id}-${idx}`} className="hover:bg-slate-50"><td className="px-6 py-4 font-medium text-slate-800">{log.teacherName}</td><td className="px-6 py-4 text-slate-500">{log.time}</td><td className="px-6 py-4 text-right"><span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"><CheckCircle size={12} /> Hadir</span></td></tr>))}</tbody>
                                     </table>
                                 ) : ( <div className="p-8 text-center text-slate-400">Belum ada data kehadiran hari ini.</div> )}
                             </div>
@@ -1482,10 +1486,10 @@
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-slate-100 bg-blue-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-blue-800 flex items-center gap-2"><LogIn size={20} /> Aktivitas Masuk Kelas</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-blue-600 border border-blue-100">Real-time</span></div>
                             <div className="p-0">
-                                {classLogs.length > 0 ? (
+                                {(classLogs || []).length > 0 ? (
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50"><tr><th className="px-6 py-3 font-semibold text-slate-600">Guru</th><th className="px-6 py-3 font-semibold text-slate-600">Kelas / Mapel</th><th className="px-6 py-3 font-semibold text-slate-600 text-right">Jam Masuk</th></tr></thead>
-                                        <tbody className="divide-y divide-slate-100">{classLogs.map((log) => (<tr key={log.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-medium text-slate-800">{log.teacherName}</td><td className="px-6 py-4"><div className="text-slate-800 font-bold">{log.className}</div><div className="text-xs text-slate-500">{log.subject}</div></td><td className="px-6 py-4 text-right text-blue-600 font-mono font-medium">{log.time}</td></tr>))}</tbody>
+                                        <tbody className="divide-y divide-slate-100">{(classLogs || []).map((log, idx) => (<tr key={`log-${log.id}-${idx}`} className="hover:bg-slate-50"><td className="px-6 py-4 font-medium text-slate-800">{log.teacherName}</td><td className="px-6 py-4"><div className="text-slate-800 font-bold">{log.className}</div><div className="text-xs text-slate-500">{log.subject}</div></td><td className="px-6 py-4 text-right text-blue-600 font-mono font-medium">{log.time}</td></tr>))}</tbody>
                                     </table>
                                 ) : ( <div className="p-8 text-center text-slate-400">Belum ada aktivitas masuk kelas.</div> )}
                             </div>
@@ -1553,7 +1557,7 @@
                 const newAttendance = {};
                 let needsUpdate = false;
                 
-                students.forEach(student => {
+                (students || []).forEach(student => {
                     if (!attendance[student.id]) {
                         newAttendance[student.id] = 'Hadir';
                         needsUpdate = true;
@@ -1622,8 +1626,8 @@
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {students.map((student, index) => (
-                        <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                        {(students || []).map((student, index) => (
+                        <tr key={`presensi-${student.id}-${index}`} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4 text-slate-500 font-medium">{index + 1}</td>
                             <td className="px-6 py-4">
                             <div className="font-bold text-slate-800">{student.name}</div>
@@ -1664,7 +1668,7 @@
             
             const processedTeachers = useMemo(() => {
                 const map = new Map();
-                teachers.forEach(t => {
+                (teachers || []).forEach(t => {
                     const key = t.name.toLowerCase().trim();
                     if (map.has(key)) {
                         const existing = map.get(key);
@@ -1691,7 +1695,7 @@
 
             const handleGenerate = (teacher) => {
                 const username = generateUsername(teacher.name);
-                if (accounts.some(acc => acc.username === username)) { showToast(`Username ${username} sudah terdaftar.`, 'error'); return; }
+                if ((accounts || []).some(acc => acc.username === username)) { showToast(`Username ${username} sudah terdaftar.`, 'error'); return; }
                 const newAccount = { username: username, password: '123456', role: 'guru', name: teacher.name, teacherId: teacher.id };
                 setAccounts((prev) => [...prev, newAccount]); showToast(`Akun untuk ${teacher.name} berhasil dibuat! (Pass: 123456)`);
             };
@@ -1724,10 +1728,10 @@
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredTeachers.map((teacher) => {
-                                    const account = accounts.find(acc => acc.name === teacher.name && acc.role === 'guru');
+                                {filteredTeachers.map((teacher, idx) => {
+                                    const account = (accounts || []).find(acc => acc.name === teacher.name && acc.role === 'guru');
                                     return (
-                                        <tr key={teacher.id} className="hover:bg-slate-50 transition-colors">
+                                        <tr key={`gen-${teacher.id}-${idx}`} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-4 font-bold text-slate-800">
                                                 {teacher.name}
                                                 <div className="text-xs text-slate-400 font-mono font-normal mt-0.5">{teacher.nip}</div>
@@ -1779,51 +1783,44 @@
 
              const uniqueTeacherNames = useMemo(() => {
                 const names = new Set();
-                teachers.forEach(t => {
+                (teachers || []).forEach(t => {
                     if (t.name) names.add(t.name);
                 });
                 return Array.from(names).sort();
             }, [teachers]);
 
-            // --- Updated Time Logic ---
             const calculateTime = (startJam, endJam) => {
+                if (!startJam || !endJam) return '';
+                
                 const start = parseInt(startJam);
                 const end = parseInt(endJam);
                 
-                if (!start || !end || isNaN(start) || isNaN(end) || start > end) return 'Waktu tidak valid';
+                if (isNaN(start) || isNaN(end) || start > end) return 'Waktu tidak valid';
 
-                const baseTime = 7 * 60 + 10; // 07:10 in minutes
-                const jp = 40; // 40 minutes per JP
-                const breakDuration = 20; // 20 minutes break
+                const startTimeBase = 7 * 60; 
+                const jpDuration = 40; 
+                const breakStart = 10 * 60 + 30; 
+                const breakDuration = 20; 
 
-                const getMins = (jam, isEnd) => {
-                    // Calculate base minutes from start of day
-                    let mins = baseTime + ((jam - 1) * jp);
-                    // If calculating end time of a period, add duration
-                    if (isEnd) mins += jp;
-                    
-                    // Logic: Break happens after Jam 5 (10:30-10:50).
-                    // Jam 6 starts at 10:50.
-                    // If we are calculating Start Time: Any period >= 6 must add break duration.
-                    // If we are calculating End Time: Any period >= 6 must add break duration.
-                    // Special case: End of Period 5 is 10:30. No break added. 
-                    
-                    if (jam >= 6) {
-                        mins += breakDuration;
+                const getMinutesFromJam = (jamIndex, isEnd = false) => {
+                    let totalMinutes = startTimeBase + ((jamIndex - 1) * jpDuration);
+                    if (isEnd) totalMinutes += jpDuration;
+                    if (totalMinutes > (10 * 60 + 30)) { 
+                         totalMinutes += 20;
                     }
-                    return mins;
+                    return totalMinutes;
                 };
 
-                const startMins = getMins(start, false);
-                const endMins = getMins(end, true);
+                const startMins = getMinutesFromJam(start);
+                const endMins = getMinutesFromJam(end, true);
 
-                const format = (m) => {
-                    const hh = Math.floor(m / 60);
-                    const mm = m % 60;
-                    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+                const formatTime = (totalMins) => {
+                    const h = Math.floor(totalMins / 60);
+                    const m = totalMins % 60;
+                    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
                 };
 
-                return `${format(startMins)} - ${format(endMins)}`;
+                return `${formatTime(startMins)} - ${formatTime(endMins)}`;
             };
 
             useEffect(() => {
@@ -1925,8 +1922,7 @@
                  else if (type === 'Guru') templateData = [{ "Nama Guru": "", "NIP": "", "Mapel": "", "Tugas Tambahan": "" }]; 
                  else if (type === 'Kelas') templateData = [{ "Nama Kelas": "", "Wali Kelas": "" }];
                  else if (type === 'Mapel') templateData = [{ "Kode": "", "Nama Mapel": "" }]; 
-                 // Updated Template for Jadwal with 1-9 logic
-                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Jam Mulai": "", "Jam Selesai": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
+                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Waktu": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
 
                  const ws = XLSX.utils.json_to_sheet(templateData);
                  const wb = XLSX.utils.book_new();
@@ -1983,41 +1979,15 @@
                             code: getVal("Kode"), 
                             name: getVal("Nama Mapel") 
                         };
-                        if (type === 'Jadwal') {
-                            const startJam = getVal("Jam Mulai");
-                            const endJam = getVal("Jam Selesai");
-                            // Logic for auto-calculating time string on import
-                            let timeString = "";
-                            if (startJam && endJam) {
-                                // Re-use calculation logic here, need access to calculateTime or duplicate
-                                // Duplicating for simplicity inside this closure
-                                const baseTime = 7 * 60 + 10;
-                                const jp = 40;
-                                const breakDuration = 20;
-                                const getMins = (jam, isEnd) => {
-                                    let mins = baseTime + ((jam - 1) * jp);
-                                    if (isEnd) mins += jp;
-                                    if (jam >= 6) mins += breakDuration;
-                                    return mins;
-                                };
-                                const format = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-                                timeString = `${format(getMins(parseInt(startJam), false))} - ${format(getMins(parseInt(endJam), true))}`;
-                            } else {
-                                timeString = getVal("Waktu"); // Fallback to manual string if cols missing
-                            }
-
-                            return { 
-                                id: generateId(), 
-                                day: getVal("Hari"), 
-                                time: timeString,
-                                startJam: startJam,
-                                endJam: endJam,
-                                class: getVal("Kelas"), 
-                                subject: getVal("Mapel"), 
-                                teacherName: getVal("Guru"), 
-                                room: getVal("Ruang") 
-                            };
-                        }
+                        if (type === 'Jadwal') return { 
+                            id: generateId(), 
+                            day: getVal("Hari"), 
+                            time: getVal("Waktu"), 
+                            class: getVal("Kelas"), 
+                            subject: getVal("Mapel"), 
+                            teacherName: getVal("Guru"), 
+                            room: getVal("Ruang") 
+                        };
                         return null;
                     }).filter(item => item !== null && (item.name || item.code || item.day)); 
                     
@@ -2195,8 +2165,8 @@
                                 </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                {students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
-                                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                                {(students || []).filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((student, index) => (
+                                    <tr key={`student-${student.id}-${index}`} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 font-bold text-slate-800">{student.name}</td>
                                     <td className="px-6 py-4 text-slate-500 font-mono">{student.nis}</td>
                                     <td className="px-6 py-4">
@@ -2245,8 +2215,8 @@
                                 </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                {teachers.map((t) => (
-                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                {(teachers || []).map((t, index) => (
+                                    <tr key={`teacher-${t.id}-${index}`} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 font-bold text-slate-800">{t.name}</td>
                                     <td className="px-6 py-4 text-slate-500 font-mono">{t.nip}</td>
                                     <td className="px-6 py-4">{t.mapel}</td>
@@ -2294,11 +2264,11 @@
                             <ImportExportButtons type="Kelas" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {classes.map((kelas) => {
-                                const studentCount = students.filter(s => s.class === kelas.name).length;
+                            {(classes || []).map((kelas, index) => {
+                                const studentCount = (students || []).filter(s => s.class === kelas.name).length;
                                 
                                 return (
-                                <div key={kelas.id} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 relative group bg-white">
+                                <div key={`class-${kelas.id}-${index}`} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 relative group bg-white">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 mb-2">
                                         <Users size={24} />
@@ -2355,8 +2325,8 @@
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {subjects.map((mapel) => (
-                                    <tr key={mapel.id} className="hover:bg-slate-50 transition-colors">
+                                {(subjects || []).map((mapel, index) => (
+                                    <tr key={`subject-${mapel.id}-${index}`} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 text-slate-500 font-mono font-medium">{mapel.code}</td>
                                     <td className="px-6 py-4 font-bold text-slate-800">{mapel.name}</td>
                                     <td className="px-6 py-4"><span className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">{mapel.kktp}</span></td>
@@ -2400,8 +2370,8 @@
                                      </tr>
                                  </thead>
                                  <tbody className="divide-y divide-slate-100">
-                                     {schedules.map((item) => (
-                                      <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                     {(schedules || []).map((item, index) => (
+                                      <tr key={`schedule-${item.id}-${index}`} className="hover:bg-slate-50 transition-colors">
                                       <td className="px-6 py-4 font-bold text-slate-800">{item.day}</td>
                                       <td className="px-6 py-4 text-slate-500">{item.time}</td>
                                       <td className="px-6 py-4 font-medium text-slate-700">{item.class}</td>
@@ -2538,7 +2508,7 @@
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link SK Pembagian Tugas (KBM)</label>
                                         <input 
                                             type="text" 
-                                            value={schoolDocs?.sk_kbm || ''}
+                                            value={schoolDocs.sk_kbm || ''}
                                             onChange={(e) => setSchoolDocs({...schoolDocs, sk_kbm: e.target.value})}
                                             placeholder="https://drive.google.com/..."
                                             className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
@@ -2548,7 +2518,7 @@
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link Perhitungan Pekan Efektif</label>
                                         <input 
                                             type="text" 
-                                            value={schoolDocs?.pekan_efektif || ''}
+                                            value={schoolDocs.pekan_efektif || ''}
                                             onChange={(e) => setSchoolDocs({...schoolDocs, pekan_efektif: e.target.value})}
                                             placeholder="https://drive.google.com/..."
                                             className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
@@ -2588,7 +2558,7 @@
                                             </select>
                                             <select className="w-full border p-3 rounded-xl" value={formData.class || ''} onChange={e => setFormData({...formData, class: e.target.value})}>
                                                 <option value="" disabled>Pilih Kelas</option>
-                                                {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                                {(classes || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                             </select>
                                         </>
                                     )}
@@ -2607,7 +2577,7 @@
                                                     onChange={e => setFormData({...formData, mapel: e.target.value})} 
                                                 />
                                                 <datalist id="mapelList">
-                                                    {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                    {(subjects || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                                 </datalist>
                                             </div>
 
@@ -2685,17 +2655,17 @@
                                                     </div>
                                                 </div>
                                                 <p className="text-[10px] text-slate-400 mt-2 italic">
-                                                    *Otomatis menghitung jam (1 JP = 40 mnt, Mulai 07:10). Istirahat (10:30-10:50) otomatis ditambahkan jika melewati Jam ke-6.
+                                                    *Otomatis menghitung jam (1 JP = 40 mnt). Istirahat 10:30-10:50 dilompati.
                                                 </p>
                                             </div>
 
                                             <select className="w-full border p-3 rounded-xl bg-white" value={formData.class || ''} onChange={e => setFormData({...formData, class: e.target.value})}>
                                                 <option value="" disabled>Pilih Kelas</option>
-                                                {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                                {(classes || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                             </select>
                                             <select className="w-full border p-3 rounded-xl bg-white" value={formData.subject || ''} onChange={e => setFormData({...formData, subject: e.target.value})}>
                                                 <option value="" disabled>Pilih Mapel</option>
-                                                {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                {(subjects || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                             </select>
                                              <select className="w-full border p-3 rounded-xl bg-white" value={formData.teacherName || ''} onChange={e => setFormData({...formData, teacherName: e.target.value})}>
                                                 <option value="" disabled>Pilih Guru</option>
@@ -2737,8 +2707,8 @@
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {students.filter(s => s.class === selectedClassData.name).map((s, idx) => (
-                                                <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                                            {(students || []).filter(s => s.class === selectedClassData.name).map((s, idx) => (
+                                                <tr key={`student-row-${s.id}-${idx}`} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-4 py-3 text-slate-500 font-medium">{idx + 1}</td>
                                                     <td className="px-4 py-3 font-bold text-slate-800">{s.name}</td>
                                                     <td className="px-4 py-3 text-slate-500 font-mono">{s.nis}</td>
@@ -2748,7 +2718,7 @@
                                                     </td>
                                                 </tr>
                                             ))}
-                                            {students.filter(s => s.class === selectedClassData.name).length === 0 && (
+                                            {(students || []).filter(s => s.class === selectedClassData.name).length === 0 && (
                                                 <tr>
                                                     <td colSpan="5" className="px-4 py-8 text-center text-slate-400">Belum ada siswa di kelas ini.</td>
                                                 </tr>
@@ -2872,6 +2842,8 @@
                 }, [firebaseReady, docId]);
 
                 const updateData = async (newValue) => {
+                    // Update lokal secara optimistik untuk responsivitas UI
+                    // newValue bisa berupa fungsi update (prev => ...) atau nilai langsung
                     const valueToStore = newValue instanceof Function ? newValue(data) : newValue;
                     setData(valueToStore); 
 
@@ -2929,10 +2901,10 @@
                 localStorage.removeItem('sijaga_user');
             };
 
-            const currentTeacher = user?.role === 'guru' ? teachers.find(t => t.name === user.name) : null; 
+            const currentTeacher = user?.role === 'guru' ? (teachers || []).find(t => t.name === user.name) : null; 
             const isPiket = currentTeacher?.status && currentTeacher.status.includes('Guru Piket');
             const isWaliKelas = currentTeacher?.status && currentTeacher.status.includes('Wali Kelas');
-            const managedClass = isWaliKelas ? classes.find(c => c.wali === user?.name)?.name : null;
+            const managedClass = isWaliKelas ? (classes || []).find(c => c.wali === user?.name)?.name : null;
 
             const isManagement = user?.role === 'admin' || 
                                  user?.role === 'kepala_sekolah' || 
@@ -3004,8 +2976,8 @@
                             {activeTab === 'dashboard' && (
                                 <Dashboard 
                                     user={user} 
-                                    teachersCount={teachers.length} 
-                                    studentsCount={students.length} 
+                                    teachersCount={(teachers || []).length} 
+                                    studentsCount={(students || []).length} 
                                     setActiveTab={setActiveTab}
                                     classLogs={classLogs}
                                     setClassLogs={setClassLogs}
