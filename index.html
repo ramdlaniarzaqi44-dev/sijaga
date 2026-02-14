@@ -3,36 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIJAGA Pro - Realtime Cloud</title>
+    <title>SIJAGA Pro - Realtime Cloud (Fixed)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Fonts: Plus Jakarta Sans -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
     <!-- Babel untuk JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <!-- SheetJS untuk Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-
     <!-- jsPDF & AutoTable untuk PDF Reporting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         window.initFirebase = async () => {
-            // --- KONFIGURASI FIREBASE ---
+            // --- KONFIGURASI FIREBASE ANDA ---
             const firebaseConfig = {
                 apiKey: "AIzaSyBrKxKE_SsTEaCzOGY6mNUfTnnTGBhDowQ",
                 authDomain: "sijaga-pro.firebaseapp.com",
@@ -41,7 +36,6 @@
                 messagingSenderId: "570764007648",
                 appId: "1:570764007648:web:6e3ec32d3dd99c8ee29885"
             };
-
             const appId = 'sijaga-pro';
             let app;
             
@@ -53,25 +47,20 @@
             
             const auth = getAuth(app);
             const db = getFirestore(app);
-
             const doAuth = async () => {
                 try {
                     await signInAnonymously(auth);
                 } catch (error) {
-                    console.warn("Offline Mode / Auth Failed:", error.message);
+                    console.error("Authentication Failed", error);
                 }
             };
             
             await doAuth();
-
-            // Expose Firebase to Global Scope for React
             window.firebaseData = { auth, db, appId, doc, setDoc, onSnapshot, collection };
             window.dispatchEvent(new Event('firebase-ready'));
         };
-
         window.initFirebase();
     </script>
-
     <script>
         tailwind.config = {
             theme: {
@@ -88,7 +77,6 @@
             }
         }
     </script>
-
     <style>
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
@@ -105,11 +93,9 @@
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700 overflow-hidden">
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
         const { jsPDF } = window.jspdf;
-
         // --- ICONS DEFINITION ---
         const ICONS = {
             LayoutDashboard: <><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></>,
@@ -156,11 +142,8 @@
             Link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
             Wifi: <><path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></>,
             BrainCircuit: <><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.97-3.284"/><path d="M17.97 14.716A4 4 0 0 1 16 18"/></>,
-            FileBadge: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 13v6"/><path d="M9 16h6"/></>,
-            Square: <><rect width="18" height="18" x="3" y="3" rx="2" /></>,
-            CheckSquare: <><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>
+            FileBadge: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 13v6"/><path d="M9 16h6"/></>
         };
-
         const LucideIcon = ({ name, size = 24, className, ...props }) => {
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
@@ -168,16 +151,13 @@
                 </svg>
             );
         };
-
         const IconComponents = Object.keys(ICONS).reduce((acc, key) => {
             acc[key] = (props) => <LucideIcon name={key} {...props} />;
             return acc;
         }, {});
-
         const {
-            LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link, Wifi, BrainCircuit, FileBadge, Square, CheckSquare
+            LayoutDashboard, BookOpen, Users, Calendar, ClipboardCheck, GraduationCap, FileText, Settings, Menu, X, Plus, Save, Trash2, Search, CheckCircle, BarChart3, UserCheck, Database, Edit, School, MoreVertical, Key, LogOut, Lock, UserCog, Sun, LogIn, Eye, EyeOff, XCircle, Download, Clock, MapPin, Activity, Crosshair, AlertCircle, Upload, FileSpreadsheet, Book, Folder, File, Link, Wifi, BrainCircuit, FileBadge
         } = IconComponents;
-
         // --- Mock Data & Constants ---
         const INITIAL_STUDENTS = [
             { id: 1, name: 'Ahmad Dahlan', nis: '2024001', gender: 'L', class: 'X-A', status: 'Aktif' },
@@ -186,26 +166,22 @@
             { id: 4, name: 'Dewi Sartika', nis: '2024004', gender: 'P', class: 'X-A', status: 'Pindah' },
             { id: 5, name: 'Eko Prasetyo', nis: '2024005', gender: 'L', class: 'X-A', status: 'Aktif' },
         ];
-
         const INITIAL_TEACHERS = [
             { id: 1, name: 'Bpk. Guru RI', nip: '198501012010011001', mapel: 'Matematika', status: 'Wali Kelas, Guru Piket' }, 
             { id: 2, name: 'Ibu Siti Aminah', nip: '199002022015022002', mapel: 'Bahasa Indonesia', status: 'Guru Piket' },
             { id: 3, name: 'Bpk. Johny', nip: '199203032019031003', mapel: 'Fisika', status: '-' },
             { id: 4, name: 'Bpk. Kepala Sekolah', nip: '198001012005011001', mapel: 'PKN', status: 'Kepala Sekolah' },
         ];
-
         const INITIAL_CLASSES = [
             { id: 'X-A', name: 'X-A', wali: 'Bpk. Guru RI', total: 32 },
             { id: 'X-B', name: 'X-B', wali: 'Ibu Siti Aminah', total: 30 },
             { id: 'XI-IPA', name: 'XI IPA 1', wali: 'Bpk. Johny', total: 28 },
         ];
-
         const INITIAL_SUBJECTS = [
             { id: 1, code: 'MTK-E', name: 'Matematika' },
             { id: 2, code: 'IND-E', name: 'Bahasa Indonesia' },
             { id: 3, code: 'IPA-F', name: 'Fisika' },
         ];
-
         const INITIAL_SCHEDULE = [
             { id: 1, day: 'Senin', time: '07:00 - 08:30', class: 'X-A', subject: 'Matematika', room: 'R. 101', teacherName: 'Bpk. Guru RI' },
             { id: 2, day: 'Senin', time: '08:30 - 10:00', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
@@ -216,13 +192,11 @@
             { id: 7, day: 'Kamis', time: '08:30 - 10:00', class: 'XI-IPA', subject: 'Projek P5', room: 'Aula', teacherName: 'Ibu Siti Aminah' },
             { id: 8, day: 'Jumat', time: '07:00 - 08:30', class: 'X-B', subject: 'Matematika', room: 'R. 102', teacherName: 'Bpk. Guru RI' },
         ];
-
         const INITIAL_ACCOUNTS = [
             { username: 'admin', password: '123', role: 'admin', name: 'Administrator Sekolah' },
-            { username: 'guru', password: '123', role: 'guru', name: 'Bpk. Guru RI', id: 1, teacherId: 1 },
-            { username: 'kepsek', password: '123', role: 'guru', name: 'Bpk. Kepala Sekolah', id: 4, teacherId: 4 },
+            { username: 'guru', password: '123', role: 'guru', name: 'Bpk. Guru RI', id: 1 },
+            { username: 'kepsek', password: '123', role: 'guru', name: 'Bpk. Kepala Sekolah', id: 4 },
         ];
-
         const INITIAL_DRIVE_LINKS = {
             1: {
                 perangkat: 'https://drive.google.com/',
@@ -230,12 +204,10 @@
                 psaj: ''
             }
         };
-
         const INITIAL_SCHOOL_DOCS = {
             sk_kbm: '',
             pekan_efektif: ''
         };
-
         const INITIAL_SCHOOL_CONFIG = {
             name: 'SMA Negeri 1 Edukasi',
             npsn: '12345678',
@@ -244,11 +216,9 @@
             academicYear: '2025/2026',
             semester: 'Ganjil'
         };
-
         const generateId = () => {
              return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
         };
-
         const ToastContainer = ({ toast }) => {
             if (!toast) return null;
             return (
@@ -260,7 +230,6 @@
                 </div>
             );
         };
-
         const ConfirmModal = ({ confirm }) => {
             if (!confirm) return null;
             return (
@@ -281,27 +250,26 @@
                 </div>
             );
         };
-
         const LoginScreen = ({ onLogin, accounts, showToast, schoolConfig }) => {
             const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
             const [showPassword, setShowPassword] = useState(false);
             const [error, setError] = useState('');
-
             const handleSubmit = (e) => {
                 e.preventDefault();
                 let foundAccount = (accounts || []).find(acc => acc.username === username && acc.password === password);
                 
                 if (foundAccount) {
+                    // Create a user object for the session
                     let sessionUser = { ...foundAccount };
-
                     if (sessionUser.role === 'guru') {
+                        // Priority 1: If account has specific teacherId (from generation), use it
                         if (sessionUser.teacherId) {
-                            sessionUser.id = String(sessionUser.teacherId);
-                        } else if (!sessionUser.id) {
-                            sessionUser.id = "1";
-                        } else {
-                            sessionUser.id = String(sessionUser.id);
+                            sessionUser.id = sessionUser.teacherId;
+                        } 
+                        // Priority 2: If account has no ID yet (shouldn't happen for hardcoded, but strictly speaking), fallback
+                        else if (!sessionUser.id) {
+                            sessionUser.id = 1; // Default fallback
                         }
                     }
                     onLogin(sessionUser);
@@ -310,7 +278,6 @@
                     showToast('Login Gagal: Periksa username dan password', 'error');
                 }
             };
-
             return (
                 <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300 mx-auto">
@@ -367,14 +334,12 @@
                                         </button>
                                     </div>
                                 </div>
-
                                 {error && (
                                     <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-center gap-3 animate-fade-in">
                                         <div className="bg-red-100 p-1.5 rounded-full text-red-600"><X size={16} /></div> 
                                         <span className="font-medium">{error}</span>
                                     </div>
                                 )}
-
                                 <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
                                     <LogIn size={20} />
                                     Masuk Aplikasi
@@ -382,17 +347,15 @@
                             </form>
                             
                             <div className="mt-8 text-center text-[10px] md:text-xs text-slate-400">
-                                <p>Demo Access: <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Selamat Mengerjakan</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Semoga Sehat Selalu</span></p>
+                                <p>Selamat Mengerjakan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Tetap Semangat</span> dan <span className="font-mono bg-slate-100 px-3 py-1 rounded-md text-slate-600 border border-slate-200 font-semibold">Sehat Selalu</span></p>
                             </div>
                         </div>
                     </div>
                 </div>
             );
         };
-
         const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, user, onLogout, isPiket, isManagement, isWaliKelas, schoolConfig }) => {
             const [isHovered, setIsHovered] = useState(false);
-
             const menuGroups = [
                 {
                     category: "Menu Utama",
@@ -425,16 +388,13 @@
                     ]
                 }
             ];
-
             const isExpanded = isOpen || isHovered; 
-
             return (
                 <>
                     <div 
                         className={`fixed inset-0 bg-slate-900/50 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                         onClick={() => setIsOpen(false)}
                     ></div>
-
                     <div 
                         className={`fixed md:relative inset-y-0 left-0 z-50 bg-slate-900 text-white sidebar-transition flex flex-col shadow-2xl md:shadow-none overflow-hidden
                         ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'} 
@@ -467,9 +427,7 @@
                                     if (item.id === 'analisis-siswa') return (user.role === 'admin' || isManagement || isWaliKelas);
                                     return item.roles.includes(user.role);
                                 });
-
                                 if (visibleItems.length === 0) return null;
-
                                 return (
                                     <div key={idx} className="mb-6">
                                         <div className={`mb-2 px-4 transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'}`}>
@@ -481,7 +439,7 @@
                                                     key={item.id}
                                                     onClick={() => { 
                                                         if (item.id === 'asesmen') {
-                                                            window.open('https://erapor-zeta.vercel.app', '_blank');
+                                                            window.open('https://erapor-zeta.vercel.app/', '_blank');
                                                         } else if (item.id === 'jurnal-piket') {
                                                             window.open('https://sigapaltaz.web.app/', '_blank'); 
                                                         } else {
@@ -507,20 +465,17 @@
                                 );
                             })}
                         </div>
-
                         <div className="p-3 bg-slate-950 border-t border-slate-800 shrink-0">
                             <div className={`flex items-center gap-2 mb-3 px-2 py-1.5 rounded bg-emerald-900/30 border border-emerald-900/50 transition-all duration-300 ${isExpanded ? '' : 'justify-center'}`}>
-                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 online-dot shrink-0"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-50 online-dot shrink-0"></div>
                                 <span className={`text-[10px] font-bold text-emerald-400 uppercase tracking-wider transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Online</span>
                             </div>
-
                             <div className={`flex items-center gap-3 mb-2 p-2 rounded-lg bg-slate-900/50 transition-all duration-300 ${isExpanded ? '' : 'justify-center'}`}>
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-xs font-bold uppercase shadow-md shrink-0">
                                     {user.role.substring(0, 2)}
                                 </div>
                                 <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
                                     <p className="text-xs font-semibold truncate text-white">{user.name.split(' ')[0]}</p>
-                                    <p className="text-[10px] text-slate-400 truncate">ID: {user.id}</p>
                                 </div>
                             </div>
                             <button 
@@ -536,7 +491,6 @@
                 </>
             );
         };
-
         const StatCard = ({ title, value, icon: Icon, color }) => (
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
                 <div>
@@ -548,7 +502,6 @@
                 </div>
             </div>
         );
-
         const JurnalKokurikuler = ({ showToast }) => (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
                 <div className="bg-indigo-50 p-4 rounded-full mb-4">
@@ -558,7 +511,6 @@
                 <p className="text-slate-500 mt-2">Modul ini sedang dalam tahap pengembangan.</p>
             </div>
         );
-
         const DokumenView = ({ title, type, schoolDocs }) => {
             return (
                 <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm animate-fade-in text-center">
@@ -578,10 +530,8 @@
                 </div>
             );
         }
-
         const AnalisisSiswa = ({ classes, students, attendance, jurnals, schedules, user, isWaliKelas, managedClass, isManagement }) => {
             const [selectedClass, setSelectedClass] = useState('');
-
             useEffect(() => {
                 if (isWaliKelas && managedClass) {
                     setSelectedClass(managedClass);
@@ -589,26 +539,21 @@
                     setSelectedClass(classes[0].name);
                 }
             }, [classes, isWaliKelas, managedClass, isManagement, user.role]);
-
             const analysisData = useMemo(() => {
                 if (!selectedClass) return null;
-
                 const classStudents = (students || []).filter(s => s.class === selectedClass);
                 const totalStudents = classStudents.length;
                 if (totalStudents === 0) return { error: "Belum ada data siswa di kelas ini." };
-
                 const relevantJournals = (jurnals || []).filter(j => j.class === selectedClass);
                 
                 const absenceFrequency = {};
                 let totalPossiblePresent = 0;
                 let totalActualPresent = 0;
-
                 relevantJournals.forEach(j => {
                     totalPossiblePresent += totalStudents;
                     
                     const absents = j.absentStudents && j.absentStudents !== 'Nihil' ? j.absentStudents.split(', ') : [];
                     totalActualPresent += (totalStudents - absents.length);
-
                     absents.forEach(entry => {
                         const name = entry.split('(')[0].trim();
                         if (name) {
@@ -616,16 +561,13 @@
                         }
                     });
                 });
-
                 const attendanceRate = totalPossiblePresent > 0 
                     ? Math.round((totalActualPresent / totalPossiblePresent) * 100) 
                     : 100;
-
                 const atRiskStudents = Object.entries(absenceFrequency)
                     .filter(([_, count]) => count > 2)
                     .sort((a, b) => b[1] - a[1])
                     .map(([name, count]) => ({ name, count }));
-
                 const teacherNotes = relevantJournals
                     .filter(j => j.catatan && j.catatan.length > 5) 
                     .map(j => ({
@@ -635,7 +577,6 @@
                         note: j.catatan
                     }))
                     .sort((a, b) => new Date(b.date) - new Date(a.date)); 
-
                 let description = `Kelas **${selectedClass}** memiliki total **${totalStudents} siswa**. `;
                 description += `Berdasarkan data jurnal dari seluruh guru, tingkat kehadiran rata-rata kelas ini adalah **${attendanceRate}%**. `;
                 
@@ -646,21 +587,18 @@
                 } else {
                     description += "Perlu **intervensi khusus** karena tingkat ketidakhadiran yang tinggi. ";
                 }
-
                 if (atRiskStudents.length > 0) {
                     const topNames = atRiskStudents.slice(0, 3).map(s => s.name).join(", ");
                     description += `Siswa yang paling sering absen adalah: **${topNames}**. Mohon perhatian khusus dari Wali Kelas dan BK. `;
                 } else {
                     description += "Tidak ada siswa dengan absensi berulang yang signifikan. ";
                 }
-
                 if (teacherNotes.length > 0) {
                     description += `Tercatat **${teacherNotes.length} catatan perilaku/kejadian** dari guru mata pelajaran. `;
                     description += `Catatan terbaru dari ${teacherNotes[0].teacher} (${teacherNotes[0].subject}) menyebutkan: "${teacherNotes[0].note}".`;
                 } else {
                     description += "Belum ada catatan kejadian khusus yang dilaporkan guru mata pelajaran.";
                 }
-
                 return {
                     totalStudents,
                     attendanceRate,
@@ -669,9 +607,7 @@
                     description,
                     journalCount: relevantJournals.length
                 };
-
             }, [selectedClass, students, jurnals]);
-
             return (
                 <div className="space-y-8 animate-fade-in">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -704,7 +640,6 @@
                             )}
                         </div>
                     </div>
-
                     {analysisData && !analysisData.error ? (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -729,7 +664,6 @@
                                     <p className="text-xs text-slate-500 mt-2">Input jurnal kejadian di kelas ini.</p>
                                 </div>
                             </div>
-
                             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-8 text-white relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <BrainCircuit size={120} />
@@ -744,7 +678,6 @@
                                     ))}
                                 </p>
                             </div>
-
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                     <div className="p-6 border-b border-slate-100 bg-red-50/50">
@@ -768,27 +701,26 @@
                                         )}
                                     </div>
                                 </div>
-
                                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
                                     <div className="p-6 border-b border-slate-100 bg-blue-50/50 shrink-0">
-                                            <h4 className="font-bold text-slate-800 flex items-center gap-2"><FileText size={18} className="text-blue-500" /> Catatan Kejadian Guru</h4>
+                                        <h4 className="font-bold text-slate-800 flex items-center gap-2"><FileText size={18} className="text-blue-500" /> Catatan Kejadian Guru</h4>
                                     </div>
                                     <div className="p-6 overflow-y-auto flex-1 no-scrollbar space-y-6">
-                                            {analysisData.teacherNotes.length > 0 ? (
-                                                analysisData.teacherNotes.map((note, idx) => (
-                                                    <div key={`note-${idx}`} className="relative pl-6 border-l-2 border-slate-200 last:border-0 pb-1">
-                                                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-400"></div>
-                                                        <div className="mb-1 flex justify-between items-start">
-                                                            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{note.subject}</span>
-                                                            <span className="text-[10px] text-slate-400">{note.date}</span>
-                                                        </div>
-                                                        <p className="text-sm text-slate-700 italic">"{note.note}"</p>
-                                                        <p className="text-xs text-slate-400 mt-1 font-medium">- {note.teacher}</p>
+                                        {analysisData.teacherNotes.length > 0 ? (
+                                            analysisData.teacherNotes.map((note, idx) => (
+                                                <div key={`note-${idx}`} className="relative pl-6 border-l-2 border-slate-200 last:border-0 pb-1">
+                                                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-indigo-400"></div>
+                                                    <div className="mb-1 flex justify-between items-start">
+                                                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{note.subject}</span>
+                                                        <span className="text-[10px] text-slate-400">{note.date}</span>
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-center text-slate-400 mt-12">Belum ada catatan dari guru.</div>
-                                            )}
+                                                    <p className="text-sm text-slate-700 italic">"{note.note}"</p>
+                                                    <p className="text-xs text-slate-400 mt-1 font-medium">- {note.teacher}</p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center text-slate-400 mt-12">Belum ada catatan dari guru.</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -801,7 +733,6 @@
                 </div>
             );
         };
-
         const Dashboard = ({ user, teachersCount, studentsCount, setActiveTab, classLogs, setClassLogs, teacherAttendance, schedules, jurnals, showToast, isManagement }) => {
             const today = new Date();
             const todayISO = today.toISOString().split('T')[0];
@@ -809,7 +740,6 @@
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const activeDay = days[today.getDay()];
             let pendingTasks = [];
-
             const handleMasukKelas = (schedule) => {
                 const newLog = {
                     id: Date.now(),
@@ -817,13 +747,11 @@
                     className: schedule.class,
                     subject: schedule.subject,
                     time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                    scheduleId: schedule.id,
-                    date: todayISO
+                    scheduleId: schedule.id
                 };
                 setClassLogs((prev) => [newLog, ...prev]);
                 showToast(`Berhasil masuk kelas ${schedule.class} - ${schedule.subject}`);
             };
-
             if (user && user.role === 'guru') {
                 const hasAbsensi = teacherAttendance.some(t => t.teacherName === user.name && t.date === todayISO);
                 if (!hasAbsensi) {
@@ -831,7 +759,7 @@
                 }
                 const mySchedulesToday = schedules.filter(s => s.day === activeDay && s.teacherName === user.name);
                 mySchedulesToday.forEach(sch => {
-                    const hasEntered = classLogs.some(log => log.scheduleId === sch.id && log.date === todayISO);
+                    const hasEntered = classLogs.some(log => log.scheduleId === sch.id);
                     if (!hasEntered) {
                         pendingTasks.push({ 
                             id: `masuk-${sch.id}`, 
@@ -848,7 +776,6 @@
                     }
                 });
             }
-
             return (
                 <div className="space-y-8 animate-fade-in">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -870,7 +797,6 @@
                             {today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </div>
                     </div>
-
                     {user.role === 'guru' && !isManagement && (
                         <div className={`rounded-2xl shadow-sm overflow-hidden animate-fade-in-down border ${pendingTasks.length > 0 ? 'bg-white border-red-100' : 'bg-emerald-50 border-emerald-100'}`}>
                             <div className={`p-4 border-b flex items-center gap-2 ${pendingTasks.length > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-100/50 border-emerald-200'}`}>
@@ -901,7 +827,6 @@
                             )}
                         </div>
                     )}
-
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <StatCard title="Total Siswa" value={studentsCount} icon={Users} color="bg-gradient-to-br from-blue-500 to-blue-600" />
                         <StatCard title="Total Guru" value={teachersCount} icon={UserCog} color="bg-gradient-to-br from-pink-500 to-pink-600" />
@@ -910,7 +835,6 @@
                             <StatCard title="Jam Mengajar" value="24 JP" icon={Calendar} color="bg-gradient-to-br from-orange-500 to-orange-600" />
                         )}
                     </div>
-
                     {user.role === 'guru' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
@@ -921,7 +845,7 @@
                                 <div className="space-y-4">
                                     {schedules.filter(s => s.day === activeDay).length > 0 ? (
                                         schedules.filter(s => s.day === activeDay).map((item, idx) => {
-                                            const isEntered = classLogs.some(log => log.scheduleId === item.id && log.date === todayISO);
+                                            const isEntered = classLogs.some(log => log.scheduleId === item.id);
                                             return (
                                                 <div key={`${item.id}-${idx}`} className="flex items-center p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition-colors group">
                                                     <div className="w-16 text-center"><span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Jam</span><span className="text-lg font-bold text-indigo-600">{(item.time || '').split(' - ')[0] || '--:--'}</span></div>
@@ -939,7 +863,7 @@
                                                         ) : (
                                                             item.teacherName === user.name && (
                                                                 <button onClick={() => handleMasukKelas(item)} className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
-                                                                        <LogIn size={14} /> Masuk Kelas
+                                                                    <LogIn size={14} /> Masuk Kelas
                                                                 </button>
                                                             )
                                                         )}
@@ -966,13 +890,11 @@
                 </div>
             );
         };
-
         const AbsensiGuru = ({ user, teacherAttendance, setTeacherAttendance, classLogs, setClassLogs, schedules, showToast }) => {
             const [status, setStatus] = useState('idle'); 
             const [location, setLocation] = useState(null);
             const today = new Date().toISOString().split('T')[0];
             const isPresent = (teacherAttendance || []).find(a => a.teacherName === user.name && a.date === today);
-
             // New helper for Reverse Geocoding
             const getAddressName = async (latitude, longitude) => {
                 try {
@@ -990,7 +912,6 @@
                     return "Area Sekitar Sekolah (GPS)";
                 }
             };
-
             const handleAbsen = () => {
                 setStatus('loading');
                 if (navigator.geolocation) {
@@ -1025,7 +946,6 @@
                     setStatus('error');
                 }
             };
-
             // Logic for Class Attendance
             const todayDate = new Date();
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -1033,7 +953,6 @@
             
             // Filter schedules for today & current teacher
             const todaysSchedules = (schedules || []).filter(s => s.day === activeDay && s.teacherName === user.name).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-
             const handleMasukKelas = (schedule) => {
                 const timestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                 const newLog = {
@@ -1048,7 +967,6 @@
                 setClassLogs((prev) => [newLog, ...prev]);
                 showToast(`Berhasil masuk kelas ${schedule.class}`);
             };
-
             return (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -1085,7 +1003,6 @@
                                 </div>
                             )}
                         </div>
-
                         {/* RIWAYAT ABSENSI HARIAN */}
                         <div className="bg-slate-50 p-8 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center">
                             <div className="bg-white p-4 rounded-full shadow-sm mb-4"><Clock size={32} className="text-slate-400" /></div>
@@ -1093,15 +1010,14 @@
                             <div className="w-full mt-4 space-y-3">
                                 {(teacherAttendance || []).filter(a => a.teacherName === user.name).slice(-3).reverse().map((log, idx) => (
                                     <div key={`att-${log.id}-${idx}`} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-sm">
-                                            <span className="text-slate-600">{log.date}</span>
-                                            <span className="font-bold text-emerald-600">{log.time}</span>
+                                        <span className="text-slate-600">{log.date}</span>
+                                        <span className="font-bold text-emerald-600">{log.time}</span>
                                     </div>
                                 ))}
                                 {(teacherAttendance || []).filter(a => a.teacherName === user.name).length === 0 && <p className="text-slate-400 text-sm">Belum ada data.</p>}
                             </div>
                         </div>
                     </div>
-
                     {/* ABSENSI MASUK KELAS */}
                     <div className="mt-8">
                         <div className="flex items-center gap-3 mb-4 px-2">
@@ -1145,12 +1061,9 @@
                 </div>
             );
         };
-
         const JadwalGuru = ({ user, schedules }) => {
-            // FIX: Menambahkan 'Minggu' ke dalam daftar hari
-            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const mySchedules = (schedules || []).filter(s => s.teacherName === user.name);
-
             return (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -1160,16 +1073,14 @@
                             </div>
                             <div>
                                 <h2 className="text-2xl font-bold text-slate-800">Jadwal Mengajar Saya</h2>
-                                <p className="text-slate-500 text-sm">Jadwal pelajaran aktif tahun ajaran ini (Termasuk Hari Minggu)</p>
+                                <p className="text-slate-500 text-sm">Jadwal pelajaran aktif tahun ajaran ini</p>
                             </div>
                         </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {days.map((day, dIdx) => {
                             const dailySchedules = mySchedules.filter(s => s.day === day).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
                             if (dailySchedules.length === 0) return null;
-
                             return (
                                 <div key={`${day}-${dIdx}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                     <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
@@ -1179,12 +1090,12 @@
                                         {dailySchedules.map((schedule, idx) => (
                                             <div key={`${schedule.id}-${idx}`} className="p-4 hover:bg-slate-50 transition-colors">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="font-bold text-indigo-600 font-mono text-sm">{schedule.time || '-'}</span>
-                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{schedule.class || '-'}</span>
+                                                    <span className="font-bold text-indigo-600 font-mono text-sm">{schedule.time}</span>
+                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{schedule.class}</span>
                                                 </div>
-                                                <h4 className="font-bold text-slate-700">{schedule.subject || '-'}</h4>
+                                                <h4 className="font-bold text-slate-700">{schedule.subject}</h4>
                                                 <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-                                                    <MapPin size={12} /> Ruang {schedule.room || '-'}
+                                                    <MapPin size={12} /> Ruang {schedule.room}
                                                 </div>
                                             </div>
                                         ))}
@@ -1201,11 +1112,9 @@
                 </div>
             );
         };
-
-        const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jurnals, showToast, showConfirm }) => {
+        const JurnalMengajar = ({ user, schedules, students, attendance, setJurnals, jurnals, showToast }) => {
             const [selectedDate, setSelectedDate] = useState(new Date());
             const [selectedSchedule, setSelectedSchedule] = useState(null);
-            const [selectedJournalIds, setSelectedJournalIds] = useState([]); // State untuk checkbox
             
             const getDayName = (date) => {
                 const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -1215,30 +1124,13 @@
             const activeDay = getDayName(selectedDate);
             const selectedDateLocale = selectedDate.toLocaleDateString('id-ID');
             const dateInputValue = selectedDate.toISOString().split('T')[0];
-
             const [form, setForm] = useState({ tujuan: '', kegiatan: '', refleksi: '', catatan: '' });
-
-            // Filter jadwal: Hanya hari yang dipilih DAN hanya milik guru yang login
-            const dailySchedules = useMemo(() => {
-                return (schedules || [])
-                    .filter(s => s.day === activeDay && s.teacherName === user.name)
-                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-            }, [schedules, activeDay, user.name]);
-
-            // Filter jurnal yang sudah diisi pada hari tersebut
-            const todaysJournals = useMemo(() => {
-                return (jurnals || [])
-                    .filter(j => j.teacherName === user.name && j.date === selectedDateLocale)
-                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-            }, [jurnals, user.name, selectedDateLocale]);
-
             const isFormValid = useMemo(() => {
                 return form.tujuan.trim() !== '' && 
                        form.kegiatan.trim() !== '' && 
                        form.refleksi.trim() !== '' && 
                        form.catatan.trim() !== '';
             }, [form]);
-
             const getAbsentStudents = (className) => {
                 const classStudents = (students || []).filter(s => s.class === className);
                 const absent = classStudents.filter(s => {
@@ -1248,14 +1140,11 @@
                 if (absent.length === 0) return 'Nihil';
                 return absent.map(s => `${s.name} (${attendance[s.id]})`).join(', ');
             };
-
             const handleDateChange = (e) => {
                 const newDate = new Date(e.target.value);
                 setSelectedDate(newDate);
                 setSelectedSchedule(null); 
-                setSelectedJournalIds([]); // Reset selection on date change
             };
-
             const handleSelectSchedule = (schedule) => {
                 setSelectedSchedule(schedule);
                 const existingJournal = (jurnals || []).find(j => j.scheduleId === schedule.id && j.date === selectedDateLocale);
@@ -1271,7 +1160,6 @@
                     setForm({ tujuan: '', kegiatan: '', refleksi: '', catatan: '' });
                 }
             };
-
             const handleSave = () => {
                 if (!isFormValid) {
                     showToast("Mohon lengkapi semua komponen jurnal (Tujuan, Kegiatan, Refleksi, Catatan).", "error");
@@ -1285,7 +1173,6 @@
                     ...form,
                     absentStudents: getAbsentStudents(selectedSchedule.class)
                 };
-
                 setJurnals((prev) => {
                     const existingIndex = (prev || []).findIndex(j => j.scheduleId === selectedSchedule.id && j.date === selectedDateLocale);
                     if (existingIndex > -1) {
@@ -1300,44 +1187,17 @@
                 });
                 setSelectedSchedule(null);
             };
-
-            // Fungsi Checkbox & Hapus Jurnal
-            const toggleSelectJournal = (id) => {
-                setSelectedJournalIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-            };
-
-            const toggleSelectAllJournals = () => {
-                if (selectedJournalIds.length === todaysJournals.length) {
-                    setSelectedJournalIds([]);
-                } else {
-                    setSelectedJournalIds(todaysJournals.map(j => j.id));
-                }
-            };
-
-            const handleDeleteSelectedJournals = () => {
-                if (selectedJournalIds.length === 0) return;
-                showConfirm(`Hapus ${selectedJournalIds.length} jurnal yang dipilih? Data yang dihapus tidak dapat dikembalikan.`, () => {
-                    setJurnals(prev => prev.filter(j => !selectedJournalIds.includes(j.id)));
-                    setSelectedJournalIds([]);
-                    showToast(`${selectedJournalIds.length} Jurnal berhasil dihapus.`, 'success');
-                });
-            };
-
             const handleDownloadPDF = () => {
                 if (!jurnals || jurnals.length === 0) {
                     showToast("Belum ada data jurnal untuk didownload.", "error");
                     return;
                 }
-
                 const myJournals = jurnals.filter(j => j.teacherName === user.name);
-                
                 if (myJournals.length === 0) {
                     showToast("Anda belum mengisi jurnal apapun.", "error");
                     return;
                 }
-
                 const doc = new jsPDF();
-
                 const columns = [
                     { header: 'Tgl', dataKey: 'date' },
                     { header: 'Jam', dataKey: 'time' },
@@ -1346,7 +1206,6 @@
                     { header: 'Kegiatan Pembelajaran', dataKey: 'kegiatan' },
                     { header: 'Siswa Absen', dataKey: 'absentStudents' },
                 ];
-
                 const body = myJournals.map(j => ({
                     date: j.date,
                     time: j.time,
@@ -1355,11 +1214,9 @@
                     kegiatan: j.kegiatan,
                     absentStudents: j.absentStudents
                 }));
-
                 doc.text(`Laporan Jurnal Mengajar - ${user.name}`, 14, 15);
                 doc.setFontSize(10);
                 doc.text(`Dicetak pada: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
-
                 doc.autoTable({
                     head: [columns.map(col => col.header)],
                     body: body.map(row => columns.map(col => row[col.dataKey])),
@@ -1369,15 +1226,14 @@
                     theme: 'grid',
                     showHead: 'everyPage', 
                 });
-
                 doc.save(`Jurnal_${user.name.replace(/\s+/g, '_')}_Lengkap.pdf`);
                 showToast("Laporan PDF berhasil didownload!", "success");
             };
-
+            const dailySchedules = (schedules || []).filter(s => s.day === activeDay);
             return (
                 <div className="space-y-6">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catat harian kegiatan pembelajaran di kelas</p></div></div>
+                        <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><Book size={32} /></div><div><h2 className="text-2xl font-bold text-slate-800">Jurnal Mengajar</h2><p className="text-slate-500 text-sm">Catatan harian kegiatan pembelajaran di kelas</p></div></div>
                         <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 w-full md:w-auto">
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-2 hidden md:block">Filter:</span>
                             <input type="date" value={dateInputValue} onChange={handleDateChange} className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none font-bold flex-1 md:flex-initial" />
@@ -1386,83 +1242,23 @@
                             </button>
                         </div>
                     </div>
-
                     {!selectedSchedule ? (
-                        <div className="space-y-8 animate-fade-in">
-                            {/* BAGIAN 1: GRID JADWAL UNTUK INPUT */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-2"><h3 className="font-bold text-lg text-slate-700">Jadwal Anda Hari {activeDay}, {selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</h3></div>
-                                {dailySchedules.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {dailySchedules.map((item, idx) => {
-                                            const isFilled = (jurnals || []).some(j => j.scheduleId === item.id && j.date === selectedDateLocale);
-                                            return (
-                                            <div key={`${item.id}-${idx}`} onClick={() => handleSelectSchedule(item)} className={`bg-white p-6 rounded-xl border cursor-pointer transition-all hover:shadow-md group ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-400'}`}>
-                                                <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${isFilled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>{item.time}</span><span className={`text-xs ${isFilled ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>{isFilled ? 'Sudah Diisi (Klik untuk Edit)' : 'Klik untuk isi'}</span></div>
-                                                <h4 className="font-bold text-lg text-slate-800">{item.subject}</h4>
-                                                <p className="text-slate-500 text-sm">Kelas {item.class} • Ruang {item.room}</p>
-                                            </div>
-                                        )})}
-                                    </div>
-                                ) : (
-                                    <div className="p-12 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center"><Calendar size={48} className="text-slate-300 mb-4" /><p>Tidak ada jadwal mengajar <strong>Anda</strong> pada hari <strong>{activeDay}</strong>.</p><p className="text-sm mt-1">Silakan pilih tanggal lain atau cek jadwal di menu Manajemen Data.</p></div>
-                                )}
-                            </div>
-
-                            {/* BAGIAN 2: DAFTAR JURNAL TERISI (DENGAN CHECKBOX) */}
-                            {todaysJournals.length > 0 && (
-                                <div className="space-y-4 pt-6 border-t border-slate-200">
-                                    <div className="flex justify-between items-center">
-                                        <h3 className="font-bold text-lg text-slate-700 flex items-center gap-2">
-                                            <Book size={20} className="text-blue-600"/> Daftar Jurnal Terisi ({selectedDateLocale})
-                                        </h3>
-                                        {selectedJournalIds.length > 0 && (
-                                            <button onClick={handleDeleteSelectedJournals} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-200 flex items-center gap-2 animate-fade-in transition-colors">
-                                                <Trash2 size={16} /> Hapus ({selectedJournalIds.length})
-                                            </button>
-                                        )}
-                                    </div>
-                                    
-                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
-                                        <table className="w-full text-left text-sm min-w-[600px]">
-                                            <thead className="bg-slate-50 border-b border-slate-200">
-                                                <tr>
-                                                    <th className="px-4 py-4 w-10 text-center">
-                                                        <button onClick={toggleSelectAllJournals} className="text-slate-400 hover:text-indigo-600 transition-colors">
-                                                            {selectedJournalIds.length > 0 && selectedJournalIds.length === todaysJournals.length ? <CheckSquare size={18} /> : <Square size={18} />}
-                                                        </button>
-                                                    </th>
-                                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Waktu</th>
-                                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Kelas/Mapel</th>
-                                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Kegiatan Pembelajaran</th>
-                                                    <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Catatan</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {todaysJournals.map((j, idx) => (
-                                                    <tr key={`journal-list-${j.id}-${idx}`} className={`hover:bg-slate-50 transition-colors ${selectedJournalIds.includes(j.id) ? 'bg-indigo-50/50' : ''}`}>
-                                                        <td className="px-4 py-4 text-center">
-                                                            <button onClick={() => toggleSelectJournal(j.id)} className={`${selectedJournalIds.includes(j.id) ? 'text-indigo-600' : 'text-slate-300 hover:text-slate-500'} transition-colors`}>
-                                                                {selectedJournalIds.includes(j.id) ? <CheckSquare size={18} /> : <Square size={18} />}
-                                                            </button>
-                                                        </td>
-                                                        <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{j.time}</td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="font-bold text-slate-800">{j.class}</div>
-                                                            <div className="text-xs text-slate-500">{j.subject}</div>
-                                                        </td>
-                                                        <td className="px-6 py-4 max-w-xs truncate text-slate-600" title={j.kegiatan}>
-                                                            {j.kegiatan}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-xs text-slate-500 italic">
-                                                            {j.catatan || '-'}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between mb-2"><h3 className="font-bold text-lg text-slate-700">Jadwal Hari {activeDay}, {selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</h3></div>
+                            {dailySchedules.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {dailySchedules.map((item, idx) => {
+                                        const isFilled = (jurnals || []).some(j => j.scheduleId === item.id && j.date === selectedDateLocale);
+                                        return (
+                                        <div key={`${item.id}-${idx}`} onClick={() => handleSelectSchedule(item)} className={`bg-white p-6 rounded-xl border cursor-pointer transition-all hover:shadow-md group ${isFilled ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-400'}`}>
+                                            <div className="flex justify-between items-start mb-2"><span className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${isFilled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>{item.time}</span><span className={`text-xs ${isFilled ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>{isFilled ? 'Sudah Diisi (Klik untuk Edit)' : 'Klik untuk isi'}</span></div>
+                                            <h4 className="font-bold text-lg text-slate-800">{item.subject}</h4>
+                                            <p className="text-slate-500 text-sm">Kelas {item.class} • Ruang {item.room}</p>
+                                        </div>
+                                    )})}
                                 </div>
+                            ) : (
+                                <div className="p-12 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center"><Calendar size={48} className="text-slate-300 mb-4" /><p>Tidak ada jadwal mengajar pada hari <strong>{activeDay}</strong>.</p><p className="text-sm mt-1">Silakan pilih tanggal lain pada filter di atas.</p></div>
                             )}
                         </div>
                     ) : (
@@ -1475,7 +1271,6 @@
                                 <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Jam Ke-</label><div className="p-3 bg-slate-50 rounded-xl text-slate-700 font-medium border border-slate-200">{selectedSchedule.time}</div></div>
                                 <div><label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Siswa Tidak Hadir</label><div className="p-3 bg-red-50 text-red-700 font-medium border border-red-100 rounded-xl">{getAbsentStudents(selectedSchedule.class)}</div><p className="text-[10px] text-slate-400 mt-1">*Data diambil otomatis dari menu Presensi Siswa</p></div>
                             </div>
-
                             <div className="space-y-4">
                                 <div><label className="block text-sm font-bold text-slate-700 mb-2">Tujuan Pembelajaran</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="2" placeholder="Contoh: Peserta didik mampu menjelaskan..." value={form.tujuan} onChange={(e) => setForm({...form, tujuan: e.target.value})}></textarea></div>
                                 <div><label className="block text-sm font-bold text-slate-700 mb-2">Kegiatan Pembelajaran / ATP</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="3" placeholder="Jelaskan alur kegiatan..." value={form.kegiatan} onChange={(e) => setForm({...form, kegiatan: e.target.value})}></textarea></div>
@@ -1484,7 +1279,6 @@
                                     <div><label className="block text-sm font-bold text-slate-700 mb-2">Catatan Kejadian</label><textarea className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow" rows="2" value={form.catatan} onChange={(e) => setForm({...form, catatan: e.target.value})}></textarea></div>
                                 </div>
                             </div>
-
                             <div className="mt-8 flex justify-end gap-3">
                                 <button onClick={() => setSelectedSchedule(null)} className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
                                 <button 
@@ -1500,13 +1294,12 @@
                 </div>
             );
         };
-
         const MonitoringGuru = ({ teacherAttendance, classLogs, schedules, jurnals, teachers }) => {
+            
             const today = new Date();
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const activeDay = days[today.getDay()];
             const todayLocale = today.toLocaleDateString('id-ID');
-
             const teacherStatus = useMemo(() => {
                 const todaysSchedules = (schedules || []).filter(s => s.day === activeDay);
                 
@@ -1526,10 +1319,7 @@
                         progress: Math.round((filledCount / teacherSchedules.length) * 100)
                     };
                 }).sort((a, b) => b.progress - a.progress); 
-
             }, [schedules, jurnals, activeDay, todayLocale]);
-
-
             return (
                 <div className="space-y-8">
                     <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -1566,8 +1356,6 @@
                             )}
                         </div>
                     </div>
-
-
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-slate-100 bg-purple-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-purple-800 flex items-center gap-2"><MapPin size={20} /> Kehadiran di Sekolah</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-purple-600 border border-purple-100">Hari Ini</span></div>
@@ -1580,7 +1368,6 @@
                                 ) : ( <div className="p-8 text-center text-slate-400">Belum ada data kehadiran hari ini.</div> )}
                             </div>
                         </div>
-
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-slate-100 bg-blue-50/50 flex justify-between items-center"><h3 className="font-bold text-lg text-blue-800 flex items-center gap-2"><LogIn size={20} /> Aktivitas Masuk Kelas</h3><span className="bg-white px-3 py-1 rounded-lg text-xs font-bold text-blue-600 border border-blue-100">Real-time</span></div>
                             <div className="p-0">
@@ -1596,24 +1383,20 @@
                 </div>
             );
         };
-
         const DriveAdministrasiGuru = ({ teacherDriveLinks, setTeacherDriveLinks, user, showToast }) => {
             const folders = [
-                { id: 'perangkat', title: 'Perangkat Ajar', color: 'bg-blue-100 text-blue-600', hoverColor: 'group-hover:text-blue-600' },
-                { id: 'sas_sat', title: 'Administrasi SAS/SAT', color: 'bg-emerald-100 text-emerald-600', hoverColor: 'group-hover:text-emerald-600' },
-                { id: 'psaj', title: 'Administrasi PSAJ', color: 'bg-orange-100 text-orange-600', hoverColor: 'group-hover:text-orange-600' },
+                { id: 'perangkat', title: 'Perangkat Ajar', color: 'bg-blue-100 text-blue-600' },
+                { id: 'sas_sat', title: 'Administrasi SAS/SAT', color: 'bg-emerald-100 text-emerald-600' },
+                { id: 'psaj', title: 'Administrasi PSAJ (Praktik & CBT)', color: 'bg-orange-100 text-orange-600' },
             ];
-
-            const userLinks = teacherDriveLinks[String(user.id)] || {};
-
             const handleFolderClick = (folderId) => {
+                const userLinks = teacherDriveLinks[user.id];
                 if (userLinks && userLinks[folderId]) {
                     window.open(userLinks[folderId], '_blank');
                 } else {
                     showToast('Link folder belum ditautkan oleh Admin.', 'error');
                 }
             };
-
             return (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -1627,83 +1410,29 @@
                             </div>
                         </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {folders.map(folder => {
-                            const hasLink = userLinks[folder.id] && userLinks[folder.id].length > 5;
-                            
-                            return (
-                                <button 
-                                    key={folder.id}
-                                    onClick={() => handleFolderClick(folder.id)}
-                                    className={`relative p-6 rounded-2xl border shadow-sm transition-all duration-300 flex flex-col items-center justify-center text-center group h-48 overflow-hidden
-                                        ${hasLink 
-                                            ? 'bg-white border-slate-200 hover:shadow-lg cursor-pointer' 
-                                            : 'bg-slate-50 border-slate-200 opacity-75 cursor-not-allowed hover:bg-slate-100'
-                                        }`}
-                                >
-                                    <div className={`absolute top-4 right-4 px-2 py-0.5 rounded-md text-[10px] font-bold border
-                                        ${hasLink ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
-                                        {hasLink ? 'TERHUBUNG' : 'KOSONG'}
-                                    </div>
-
-                                    <div className={`p-4 rounded-full mb-4 transition-transform ${hasLink ? 'group-hover:scale-110' : ''} 
-                                        ${hasLink ? folder.color : 'bg-slate-200 text-slate-400'}`}>
-                                        <Folder size={48} />
-                                    </div>
-                                    <h3 className={`font-bold transition-colors ${hasLink ? `text-slate-800 ${folder.hoverColor}` : 'text-slate-500'}`}>
-                                        {folder.title}
-                                    </h3>
-                                    <span className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                        {hasLink ? <><Link size={12} /> Buka Folder</> : <><XCircle size={12} /> Belum ada link</>}
-                                    </span>
-                                </button>
-                            );
-                        })}
+                        {folders.map(folder => (
+                            <button 
+                                key={folder.id}
+                                onClick={() => handleFolderClick(folder.id)}
+                                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col items-center justify-center text-center group h-48"
+                            >
+                                <div className={`p-4 rounded-full mb-4 transition-transform group-hover:scale-110 ${folder.color}`}>
+                                    <Folder size={48} />
+                                </div>
+                                <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{folder.title}</h3>
+                                <span className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                    <Link size={12} /> Buka Folder
+                                </span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             );
         };
         
-        const PresensiSiswa = ({ students, attendance, setAttendance, showToast, user, schedules }) => {
+        const PresensiSiswa = ({ students, attendance, setAttendance, showToast }) => {
             const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-            const [selectedClass, setSelectedClass] = useState('');
-
-            const getDayName = (dateStr) => {
-                const d = new Date(dateStr);
-                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                return days[d.getDay()];
-            };
-
-            const activeDay = getDayName(date);
-
-            const availableClasses = useMemo(() => {
-                if (user.role === 'admin') {
-                    return [...new Set((students || []).map(s => s.class))].sort();
-                }
-                
-                const todaysSchedules = (schedules || []).filter(s => 
-                    s.teacherName === user.name && s.day === activeDay
-                );
-                
-                return [...new Set(todaysSchedules.map(s => s.class))].sort();
-            }, [students, schedules, user, activeDay]);
-
-            useEffect(() => {
-                if (availableClasses.length > 0) {
-                    if (!selectedClass || !availableClasses.includes(selectedClass)) {
-                        setSelectedClass(availableClasses[0]);
-                    }
-                } else {
-                    setSelectedClass('');
-                }
-            }, [availableClasses, selectedClass]);
-
-            const filteredStudents = useMemo(() => {
-                if (!selectedClass) return [];
-                return (students || []).filter(s => s.class === selectedClass);
-            }, [students, selectedClass]);
-
             useEffect(() => {
                 const newAttendance = {};
                 let needsUpdate = false;
@@ -1714,30 +1443,25 @@
                         needsUpdate = true;
                     }
                 });
-
                 if (needsUpdate) {
                     setAttendance(prev => ({ ...prev, ...newAttendance }));
                 }
             }, [students]);
-
             const handleStatusChange = (studentId, status) => {
                 setAttendance(prev => ({
                     ...prev,
                     [studentId]: status
                 }));
             };
-
             const handleSavePresensi = () => {
-                showToast(`Data Presensi ${selectedClass} (${date}) Berhasil Disimpan!`);
+                showToast("Data Presensi Berhasil Disimpan!");
             };
-
             const statusColors = {
                 'Hadir': 'bg-emerald-100 text-emerald-700 border-emerald-200 ring-2 ring-emerald-500 ring-offset-1',
                 'Sakit': 'bg-blue-100 text-blue-700 border-blue-200 ring-2 ring-blue-500 ring-offset-1',
                 'Izin': 'bg-amber-100 text-amber-700 border-amber-200 ring-2 ring-amber-500 ring-offset-1',
                 'Alpha': 'bg-red-100 text-red-700 border-red-200 ring-2 ring-red-500 ring-offset-1',
             };
-
             return (
                 <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -1746,112 +1470,71 @@
                             <UserCheck size={32} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-800">
-                                {selectedClass ? `Presensi Kelas ${selectedClass}` : 'Presensi Siswa'}
-                            </h2>
-                            <p className="text-slate-500 text-sm">
-                                {activeDay}, {new Date(date).toLocaleDateString('id-ID')}
-                            </p>
+                            <h2 className="text-2xl font-bold text-slate-800">Presensi Kelas X-A</h2>
+                            <p className="text-slate-500 text-sm">Catat kehadiran siswa secara real-time</p>
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                        <input 
-                            type="date" 
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm font-bold text-slate-700"
-                        />
-                        
-                        {availableClasses.length > 0 && (
-                            <select 
-                                value={selectedClass} 
-                                onChange={(e) => setSelectedClass(e.target.value)}
-                                className="border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm font-bold bg-white min-w-[120px]"
-                            >
-                                {availableClasses.map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                        )}
-
-                        {availableClasses.length > 0 && (
-                            <button 
-                                onClick={handleSavePresensi}
-                                className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all"
-                            >
-                                <Save size={18} /> Simpan
-                            </button>
-                        )}
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                    <input 
+                        type="date" 
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm flex-1 md:flex-initial"
+                    />
+                    <button 
+                        onClick={handleSavePresensi}
+                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center gap-2 shadow-lg shadow-emerald-200 transition-all"
+                    >
+                        <Save size={18} /> Simpan
+                    </button>
                     </div>
                 </div>
-
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto min-h-[300px]">
-                    {availableClasses.length > 0 ? (
-                        <table className="w-full text-left text-sm min-w-[600px]">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                            <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">No</th>
-                            <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">Nama Siswa</th>
-                            <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs text-center">Status Kehadiran</th>
-                            <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredStudents.length > 0 ? (
-                                filteredStudents.map((student, index) => (
-                                <tr key={`presensi-${student.id}-${index}`} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4 text-slate-500 font-medium">{index + 1}</td>
-                                    <td className="px-6 py-4">
-                                    <div className="font-bold text-slate-800">{student.name}</div>
-                                    <div className="text-xs text-slate-400 font-mono mt-0.5">{student.nis}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                    <div className="flex justify-center gap-2">
-                                        {['Hadir', 'Sakit', 'Izin', 'Alpha'].map((status) => (
-                                        <button
-                                            key={status}
-                                            onClick={() => handleStatusChange(student.id, status)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 ${
-                                                (attendance[student.id] || 'Hadir') === status 
-                                                    ? statusColors[status] + ' shadow-md scale-105' 
-                                                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
-                                            }`}
-                                        >
-                                            {status}
-                                        </button>
-                                        ))}
-                                    </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                    <input type="text" placeholder="Tulis keterangan..." className="w-full border-b border-slate-200 focus:border-emerald-500 focus:outline-none bg-transparent py-1 text-slate-600 placeholder-slate-300 transition-colors" />
-                                    </td>
-                                </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-slate-400">
-                                        Belum ada data siswa di kelas ini.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                        </table>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full py-16 text-center px-4">
-                            <div className="bg-slate-50 p-4 rounded-full mb-4">
-                                <Calendar size={48} className="text-slate-300" />
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[600px]">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">No</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">Nama Siswa</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs text-center">Status Kehadiran</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 uppercase tracking-wider text-xs">Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {(students || []).map((student, index) => (
+                        <tr key={`presensi-${student.id}-${index}`} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-slate-500 font-medium">{index + 1}</td>
+                            <td className="px-6 py-4">
+                            <div className="font-bold text-slate-800">{student.name}</div>
+                            <div className="text-xs text-slate-400 font-mono mt-0.5">{student.nis}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                            <div className="flex justify-center gap-2">
+                                {['Hadir', 'Sakit', 'Izin', 'Alpha'].map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => handleStatusChange(student.id, status)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 ${
+                                        (attendance[student.id] || 'Hadir') === status 
+                                            ? statusColors[status] + ' shadow-md scale-105' 
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 hover:border-slate-300'
+                                    }`}
+                                >
+                                    {status}
+                                </button>
+                                ))}
                             </div>
-                            <h3 className="text-lg font-bold text-slate-700">Tidak ada jadwal mengajar di hari ini ({activeDay}).</h3>
-                            <p className="text-slate-500 text-sm mt-1 max-w-md">
-                                Silakan pilih tanggal lain atau pastikan jadwal mengajar Anda sudah diinputkan oleh Admin.
-                            </p>
-                        </div>
-                    )}
+                            </td>
+                            <td className="px-6 py-4">
+                            <input type="text" placeholder="Tulis keterangan..." className="w-full border-b border-slate-200 focus:border-emerald-500 focus:outline-none bg-transparent py-1 text-slate-600 placeholder-slate-300 transition-colors" />
+                            </td>
+                        </tr>
+                        ))}
+                    </tbody>
+                    </table>
                 </div>
                 </div>
             );
         };
-
         const GenerateAkun = ({ teachers, accounts, setAccounts, showToast }) => {
             const [searchTerm, setSearchTerm] = useState('');
             const generateUsername = (name) => { return name.toLowerCase().replace(/[^a-z0-9]/g, ''); };
@@ -1882,7 +1565,6 @@
                 });
                 return Array.from(map.values());
             }, [teachers]);
-
             const handleGenerate = (teacher) => {
                 const username = generateUsername(teacher.name);
                 if ((accounts || []).some(acc => acc.username === username)) { showToast(`Username ${username} sudah terdaftar.`, 'error'); return; }
@@ -1947,7 +1629,6 @@
                 </div>
             );
         };
-
         const ManajemenData = ({ 
             teachers, setTeachers, 
             students, setStudents, 
@@ -1970,12 +1651,6 @@
             const [driveForm, setDriveForm] = useState({ perangkat: '', sas_sat: '', psaj: '' });
             const [selectedTeacherForDrive, setSelectedTeacherForDrive] = useState(null);
             const [formData, setFormData] = useState({});
-            
-            // State untuk bulk delete jadwal
-            const [selectedScheduleIds, setSelectedScheduleIds] = useState([]);
-
-            const fileInputRef = useRef(null);
-
              const uniqueTeacherNames = useMemo(() => {
                 const names = new Set();
                 (teachers || []).forEach(t => {
@@ -1983,8 +1658,6 @@
                 });
                 return Array.from(names).sort();
             }, [teachers]);
-
-            // Helper function untuk waktu
             const calculateTime = (startJam, endJam) => {
                 if (!startJam || !endJam) return '';
                 
@@ -1992,10 +1665,10 @@
                 const end = parseInt(endJam);
                 
                 if (isNaN(start) || isNaN(end) || start > end) return 'Waktu tidak valid';
-
                 const startTimeBase = 7 * 60; 
                 const jpDuration = 40; 
-                
+                const breakStart = 10 * 60 + 30; 
+                const breakDuration = 20; 
                 const getMinutesFromJam = (jamIndex, isEnd = false) => {
                     let totalMinutes = startTimeBase + ((jamIndex - 1) * jpDuration);
                     if (isEnd) totalMinutes += jpDuration;
@@ -2004,33 +1677,26 @@
                     }
                     return totalMinutes;
                 };
-
                 const startMins = getMinutesFromJam(start);
                 const endMins = getMinutesFromJam(end, true);
-
                 const formatTime = (totalMins) => {
                     const h = Math.floor(totalMins / 60);
                     const m = totalMins % 60;
                     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
                 };
-
                 return `${formatTime(startMins)} - ${formatTime(endMins)}`;
             };
-
             useEffect(() => {
                 if (activeSubTab === 'jadwal' && formData.startJam && formData.endJam) {
                     const timeString = calculateTime(formData.startJam, formData.endJam);
                     setFormData(prev => ({ ...prev, time: timeString }));
                 }
             }, [formData.startJam, formData.endJam, activeSubTab]);
-
-
             const openAddModal = () => {
                 setFormData({});
                 setIsEditing(false);
                 setShowModal(true);
             };
-
             const openEditModal = (item, type) => {
                 let initialData = { ...item };
                 if (type === 'jadwal' && !item.startJam) {
@@ -2042,66 +1708,44 @@
                 setEditingId(item.id);
                 setShowModal(true);
             };
-
              const openDriveModal = (teacher) => {
                 setSelectedTeacherForDrive(teacher);
-                const links = teacherDriveLinks[String(teacher.id)] || { perangkat: '', sas_sat: '', psaj: '' };
+                const links = teacherDriveLinks[teacher.id] || { perangkat: '', sas_sat: '', psaj: '' };
                 setDriveForm(links);
                 setShowDriveModal(true);
             };
-
             const handleSaveDriveLinks = () => {
                 setTeacherDriveLinks((prev) => ({
                     ...prev,
-                    [String(selectedTeacherForDrive.id)]: driveForm
+                    [selectedTeacherForDrive.id]: driveForm
                 }));
                 setShowDriveModal(false);
                 showToast(`Link Drive untuk ${selectedTeacherForDrive.name} berhasil disimpan!`);
             };
-
             const handleViewStudents = (kelas) => {
                 setSelectedClassData(kelas);
                 setShowClassStudentsModal(true);
             };
-
             const handleSave = () => {
                 if (activeSubTab === 'siswa') {
-                    const newStudent = {
-                        id: isEditing ? editingId : generateId(),
-                        name: formData.name || '',
-                        nis: formData.nis || '',
-                        gender: formData.gender || 'L',
-                        class: formData.class || '',
-                        status: formData.status || 'Aktif'
-                    };
-                    setStudents((prev) => isEditing ? prev.map(s => s.id === editingId ? newStudent : s) : [...prev, newStudent]);
-                
+                    setStudents((prev) => isEditing ? prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s) : [...prev, { ...formData, id: generateId(), status: 'Aktif' }]);
                 } else if (activeSubTab === 'guru') {
                      if (isEditing) {
-                        const updatedTeacher = {
-                            id: editingId,
-                            name: formData.name || '',
-                            nip: formData.nip || '',
-                            mapel: formData.mapel || '-',
-                            status: formData.status || '-'
-                        };
-                        setTeachers((prev) => prev.map(t => t.id === editingId ? updatedTeacher : t));
+                        setTeachers((prev) => prev.map(t => t.id === editingId ? { ...formData, id: editingId } : t));
                     } else {
                         setTeachers((prev) => {
                             const index = prev.findIndex(t => 
                                 (t.nip && formData.nip && t.nip === formData.nip) || 
-                                (t.name && formData.name && t.name.toLowerCase() === (formData.name || '').toLowerCase())
+                                (t.name && formData.name && t.name.toLowerCase() === formData.name.toLowerCase())
                             );
-
                             if (index !== -1) {
                                 const existing = prev[index];
                                 const mergeStrings = (str1, str2) => {
-                                    const arr1 = str1 ? String(str1).split(',').map(s => s.trim()) : [];
-                                    const arr2 = str2 ? String(str2).split(',').map(s => s.trim()) : [];
+                                    const arr1 = str1 ? str1.split(',').map(s => s.trim()) : [];
+                                    const arr2 = str2 ? str2.split(',').map(s => s.trim()) : [];
                                     const combined = [...new Set([...arr1, ...arr2])].filter(x => x && x !== '-');
                                     return combined.length > 0 ? combined.join(', ') : '-';
                                 };
-
                                 const newMapel = mergeStrings(existing.mapel, formData.mapel);
                                 const newStatus = mergeStrings(existing.status, formData.status);
                                 
@@ -2111,73 +1755,42 @@
                                 showToast("Data guru berhasil diperbarui (digabungkan).");
                                 return newTeachers;
                             }
-                            return [...prev, { 
-                                id: generateId(),
-                                name: formData.name || '',
-                                nip: formData.nip || '',
-                                mapel: formData.mapel || '-',
-                                status: formData.status || '-'
-                            }];
+                            return [...prev, { ...formData, id: generateId() }];
                         });
                     }
                 } else if (activeSubTab === 'kelas') {
-                    const newClass = {
-                        id: isEditing ? editingId : generateId(),
-                        name: formData.name || '',
-                        wali: formData.wali || '-',
-                        total: 0
-                    };
-                    setClasses((prev) => isEditing ? prev.map(c => c.id === editingId ? newClass : c) : [...prev, newClass]);
-                
+                    setClasses((prev) => isEditing ? prev.map(c => c.id === editingId ? { ...formData, id: editingId } : c) : [...prev, { ...formData, id: generateId(), total: 0 }]);
                 } else if (activeSubTab === 'mapel') {
-                    const newSubject = {
-                        id: isEditing ? editingId : generateId(),
-                        code: formData.code || '',
-                        name: formData.name || '',
-                        kktp: formData.kktp || ''
-                    };
-                    setSubjects((prev) => isEditing ? prev.map(s => s.id === editingId ? newSubject : s) : [...prev, newSubject]);
-                
+                    setSubjects((prev) => isEditing ? prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s) : [...prev, { ...formData, id: generateId() }]);
                 } else if (activeSubTab === 'jadwal') {
-                    const newSchedule = {
-                        id: isEditing ? editingId : generateId(),
-                        day: formData.day || 'Senin',
-                        time: formData.time || '',
-                        class: formData.class || '',
-                        subject: formData.subject || '',
-                        teacherName: formData.teacherName || '-',
-                        room: formData.room || '-'
-                    };
-                    setSchedules((prev) => isEditing ? prev.map(s => s.id === editingId ? newSchedule : s) : [...prev, newSchedule]);
+                    setSchedules((prev) => isEditing ? prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s) : [...prev, { ...formData, id: generateId() }]);
                 }
-                
                 setShowModal(false);
                 setFormData({});
                 if (activeSubTab !== 'guru' || isEditing) showToast("Data Berhasil Disimpan!");
             };
-
             const handleDownloadTemplate = (type) => {
-                const wsData = [];
-                if (type === 'Siswa') wsData.push(['Nama Lengkap', 'NIS', 'L/P', 'Kelas', 'Status']);
-                if (type === 'Guru') wsData.push(['Nama Guru', 'NIP', 'Mapel', 'Tugas Tambahan']);
-                if (type === 'Kelas') wsData.push(['Nama Kelas', 'Wali Kelas']);
-                if (type === 'Mapel') wsData.push(['Kode', 'Nama Mapel']);
-                if (type === 'Jadwal') wsData.push(['Hari', 'Waktu', 'Kelas', 'Mapel', 'Guru', 'Ruang']);
-
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Template");
-                XLSX.writeFile(wb, `Template_${type}.xlsx`);
-            };
-
+                 let templateData = [];
+                 if (type === 'Siswa') templateData = [{ "Nama Lengkap": "", "NIS": "", "L/P": "", "Kelas": "", "Status": "Aktif" }];
+                 else if (type === 'Guru') templateData = [{ "Nama Guru": "", "NIP": "", "Mapel": "", "Tugas Tambahan": "" }]; 
+                 else if (type === 'Kelas') templateData = [{ "Nama Kelas": "", "Wali Kelas": "" }];
+                 else if (type === 'Mapel') templateData = [{ "Kode": "", "Nama Mapel": "" }]; 
+                 else if (type === 'Jadwal') templateData = [{ "Hari": "", "Waktu": "", "Kelas": "", "Mapel": "", "Guru": "", "Ruang": "" }];
+                 const ws = XLSX.utils.json_to_sheet(templateData);
+                 const wb = XLSX.utils.book_new();
+                 XLSX.utils.book_append_sheet(wb, ws, "Template");
+                 
+                 XLSX.writeFile(wb, `Template_${type}.xlsx`);
+                 showToast(`Template Excel ${type} berhasil diunduh.`, "success");
+            }
+            
+            const fileInputRef = useRef(null);
             const handleImportClick = () => {
-                if (fileInputRef.current) fileInputRef.current.click();
+                fileInputRef.current.click();
             };
-
             const handleFileChange = (e, type) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const data = new Uint8Array(event.target.result);
@@ -2185,13 +1798,8 @@
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
                     const newData = jsonData.map(row => {
-                        const getVal = (key) => {
-                            const val = row[key] || row[key.toLowerCase()] || row[Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase())];
-                            return val === undefined || val === null ? '' : String(val).trim();
-                        };
-
+                        const getVal = (key) => row[key] || row[key.toLowerCase()] || row[Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase())];
                         if (type === 'Siswa') return { 
                             id: generateId(), 
                             name: getVal("Nama Lengkap"), 
@@ -2204,20 +1812,19 @@
                             id: generateId(), 
                             name: getVal("Nama Guru"), 
                             nip: getVal("NIP"), 
-                            mapel: getVal("Mapel") || '-', 
+                            mapel: getVal("Mapel"), 
                             status: getVal("Tugas Tambahan") || '-' 
                         };
                         if (type === 'Kelas') return { 
                             id: generateId(), 
                             name: getVal("Nama Kelas"), 
-                            wali: getVal("Wali Kelas") || '-', 
+                            wali: getVal("Wali Kelas"), 
                             total: 0 
                         };
                         if (type === 'Mapel') return { 
                             id: generateId(), 
                             code: getVal("Kode"), 
-                            name: getVal("Nama Mapel"),
-                            kktp: ''
+                            name: getVal("Nama Mapel") 
                         };
                         if (type === 'Jadwal') return { 
                             id: generateId(), 
@@ -2225,8 +1832,8 @@
                             time: getVal("Waktu"), 
                             class: getVal("Kelas"), 
                             subject: getVal("Mapel"), 
-                            teacherName: getVal("Guru") || '-', 
-                            room: getVal("Ruang") || '-' 
+                            teacherName: getVal("Guru"), 
+                            room: getVal("Ruang") 
                         };
                         return null;
                     }).filter(item => item !== null && (item.name || item.code || item.day)); 
@@ -2259,39 +1866,8 @@
                         }
                         else if (type === 'Kelas') setClasses((prev) => [...prev, ...newData]);
                         else if (type === 'Mapel') setSubjects((prev) => [...prev, ...newData]);
-                        else if (type === 'Jadwal') {
-                            setSchedules((prev) => {
-                                const existingKeys = new Set(prev.map(s => 
-                                    `${String(s.day).trim()}-${String(s.time).trim()}-${String(s.class).trim()}-${String(s.subject).trim()}`.toLowerCase()
-                                ));
-                                
-                                const uniqueNewData = [];
-                                let duplicateCount = 0;
-
-                                newData.forEach(item => {
-                                    if(!item.day || !item.time || !item.class || !item.subject) return;
-
-                                    const key = `${String(item.day).trim()}-${String(item.time).trim()}-${String(item.class).trim()}-${String(item.subject).trim()}`.toLowerCase();
-                                    
-                                    if (!existingKeys.has(key)) {
-                                        existingKeys.add(key);
-                                        uniqueNewData.push(item);
-                                    } else {
-                                        duplicateCount++;
-                                    }
-                                });
-
-                                if (uniqueNewData.length === 0) {
-                                    showToast("Tidak ada data baru. Semua data dalam file adalah duplikat.", "info");
-                                    return prev;
-                                } else {
-                                    showToast(`Berhasil import ${uniqueNewData.length} jadwal. ${duplicateCount} data duplikat diabaikan.`, "success");
-                                    return [...prev, ...uniqueNewData];
-                                }
-                            });
-                        }
-
-                        if (type !== 'Jadwal') showToast(`Berhasil mengimport/update data ${type}.`, "success");
+                        else if (type === 'Jadwal') setSchedules((prev) => [...prev, ...newData]);
+                        showToast(`Berhasil mengimport/update data ${type}.`, "success");
                     } else {
                         showToast(`Gagal membaca data. Pastikan format sesuai template.`, "error");
                     }
@@ -2299,69 +1875,34 @@
                 reader.readAsArrayBuffer(file); 
                 e.target.value = null; 
             };
-
             const handleDeleteStudent = (id) => {
                 showConfirm('Yakin ingin menghapus data siswa ini?', () => {
                     setStudents((prev) => prev.filter(s => s.id !== id));
                     showToast("Data Siswa Berhasil Dihapus", "error");
                 });
             };
-
             const handleDeleteTeacher = (id) => {
                 showConfirm('Yakin ingin menghapus data guru ini?', () => {
                     setTeachers((prev) => prev.filter(t => t.id !== id));
                     showToast("Data Guru Berhasil Dihapus", "error");
                 });
             };
-
             const handleDeleteClass = (id) => {
                 showConfirm('Yakin ingin menghapus kelas ini? Data siswa di dalamnya harus dipindahkan terlebih dahulu.', () => {
                     setClasses((prev) => prev.filter(c => c.id !== id));
                      showToast("Data Kelas Berhasil Dihapus", "error");
                 });
             };
-
             const handleDeleteSubject = (id) => {
                 showConfirm('Yakin ingin menghapus mata pelajaran ini?', () => {
                     setSubjects((prev) => prev.filter(s => s.id !== id));
                      showToast("Data Mapel Berhasil Dihapus", "error");
                 });
             };
-
              const handleDeleteSchedule = (id) => {
                 showConfirm('Yakin ingin menghapus jadwal ini?', () => {
                     setSchedules((prev) => prev.filter(s => s.id !== id));
                     showToast("Jadwal Berhasil Dihapus", "error");
-                });
-            };
-
-            // Fungsi Bulk Delete Jadwal
-            const toggleSelectSchedule = (id) => {
-                setSelectedScheduleIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-            };
-
-            const toggleSelectAllSchedules = () => {
-                if (selectedScheduleIds.length === schedules.length) {
-                    setSelectedScheduleIds([]);
-                } else {
-                    setSelectedScheduleIds(schedules.map(s => s.id));
-                }
-            };
-
-            const handleDeleteSelectedSchedules = () => {
-                if (selectedScheduleIds.length === 0) return;
-                showConfirm(`Hapus ${selectedScheduleIds.length} jadwal yang dipilih?`, () => {
-                    setSchedules(prev => prev.filter(s => !selectedScheduleIds.includes(s.id)));
-                    setSelectedScheduleIds([]);
-                    showToast(`${selectedScheduleIds.length} Jadwal berhasil dihapus.`);
-                });
-            };
-            
-            const handleDeleteAllSchedules = () => {
-                showConfirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA JADWAL? Data yang dihapus tidak dapat dikembalikan.', () => {
-                    setSchedules([]);
-                    setSelectedScheduleIds([]);
-                    showToast("Semua jadwal berhasil dihapus.", "error");
                 });
             };
             
@@ -2394,7 +1935,6 @@
                     </button>
                 </div>
             );
-
             const subTabs = [
                 { id: 'siswa', label: 'Data Siswa', icon: Users },
                 { id: 'guru', label: 'Data Guru', icon: UserCog },
@@ -2403,7 +1943,6 @@
                 { id: 'jadwal', label: 'Data Jadwal', icon: Calendar },
                 { id: 'sekolah', label: 'Pengaturan Sekolah', icon: School },
             ];
-
             return (
                 <div className="space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -2417,7 +1956,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div className="flex overflow-x-auto border-b border-slate-200 space-x-1 pb-1">
                     {subTabs.map(tab => (
                     <button
@@ -2434,7 +1972,6 @@
                     </button>
                     ))}
                 </div>
-
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px]">
                     
                     {activeSubTab === 'siswa' && (
@@ -2495,7 +2032,6 @@
                         </div>
                     </div>
                     )}
-
                     {activeSubTab === 'guru' && (
                     <div className="p-6">
                         <div className="flex justify-between items-center mb-6">
@@ -2517,9 +2053,9 @@
                                 <tbody className="divide-y divide-slate-100">
                                 {(teachers || []).map((t, index) => (
                                     <tr key={`teacher-${t.id}-${index}`} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4 font-bold text-slate-800">{t.name || '-'}</td>
-                                    <td className="px-6 py-4 text-slate-500 font-mono">{t.nip || '-'}</td>
-                                    <td className="px-6 py-4">{t.mapel || '-'}</td>
+                                    <td className="px-6 py-4 font-bold text-slate-800">{t.name}</td>
+                                    <td className="px-6 py-4 text-slate-500 font-mono">{t.nip}</td>
+                                    <td className="px-6 py-4">{t.mapel}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
                                             t.status && t.status.includes('Wali Kelas') ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
@@ -2556,7 +2092,6 @@
                         </div>
                     </div>
                     )}
-
                     {activeSubTab === 'kelas' && (
                     <div className="p-6">
                         <div className="flex justify-between items-center mb-6">
@@ -2588,7 +2123,7 @@
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span>Wali Kelas:</span>
-                                        <span className="font-bold text-slate-700">{kelas.wali || '-'}</span>
+                                        <span className="font-bold text-slate-700">{kelas.wali}</span>
                                     </div>
                                 </div>
                                 <div className="flex gap-3 pt-4 border-t border-slate-100">
@@ -2607,7 +2142,6 @@
                         </div>
                     </div>
                     )}
-
                     {activeSubTab === 'mapel' && (
                     <div className="p-6">
                         <div className="flex justify-between items-center mb-6">
@@ -2629,7 +2163,7 @@
                                     <tr key={`subject-${mapel.id}-${index}`} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 text-slate-500 font-mono font-medium">{mapel.code}</td>
                                     <td className="px-6 py-4 font-bold text-slate-800">{mapel.name}</td>
-                                    <td className="px-6 py-4"><span className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">{mapel.kktp || '-'}</span></td>
+                                    <td className="px-6 py-4"><span className="bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600">{mapel.kktp}</span></td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button onClick={() => openEditModal(mapel, 'mapel')} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
@@ -2653,34 +2187,14 @@
                     
                      {activeSubTab === 'jadwal' && (
                         <div className="p-6">
-                             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                                 <div className="flex items-center gap-3">
-                                    <h3 className="font-bold text-lg text-slate-800">Master Jadwal Pelajaran</h3>
-                                    {selectedScheduleIds.length > 0 && (
-                                        <button onClick={handleDeleteSelectedSchedules} className="bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 flex items-center gap-1 animate-fade-in">
-                                            <Trash2 size={14} /> Hapus ({selectedScheduleIds.length})
-                                        </button>
-                                    )}
-                                 </div>
-                                 <div className="flex items-center gap-2">
-                                    <button 
-                                        onClick={handleDeleteAllSchedules}
-                                        className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 flex items-center gap-2 border border-red-200"
-                                    >
-                                        <Trash2 size={16} /> Hapus Semua
-                                    </button>
-                                    <ImportExportButtons type="Jadwal" />
-                                 </div>
+                             <div className="flex justify-between items-center mb-6">
+                                 <h3 className="font-bold text-lg text-slate-800">Master Jadwal Pelajaran</h3>
+                                <ImportExportButtons type="Jadwal" />
                             </div>
                             <div className="border border-slate-200 rounded-2xl overflow-hidden overflow-x-auto">
                                  <table className="w-full text-left text-sm min-w-[600px]">
                                  <thead className="bg-slate-50 border-b border-slate-200">
                                      <tr>
-                                         <th className="px-4 py-4 w-10 text-center">
-                                             <button onClick={toggleSelectAllSchedules} className="text-slate-400 hover:text-indigo-600">
-                                                 {selectedScheduleIds.length > 0 && selectedScheduleIds.length === schedules.length ? <CheckSquare size={18} /> : <Square size={18} />}
-                                             </button>
-                                         </th>
                                          <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Hari</th>
                                          <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Waktu</th>
                                          <th className="px-6 py-4 font-bold text-slate-700 uppercase text-xs">Kelas</th>
@@ -2691,16 +2205,11 @@
                                  </thead>
                                  <tbody className="divide-y divide-slate-100">
                                      {(schedules || []).map((item, index) => (
-                                      <tr key={`schedule-${item.id}-${index}`} className={`hover:bg-slate-50 transition-colors ${selectedScheduleIds.includes(item.id) ? 'bg-indigo-50/50' : ''}`}>
-                                      <td className="px-4 py-4 text-center">
-                                          <button onClick={() => toggleSelectSchedule(item.id)} className={`${selectedScheduleIds.includes(item.id) ? 'text-indigo-600' : 'text-slate-300 hover:text-slate-500'}`}>
-                                              {selectedScheduleIds.includes(item.id) ? <CheckSquare size={18} /> : <Square size={18} />}
-                                          </button>
-                                      </td>
-                                      <td className="px-6 py-4 font-bold text-slate-800">{item.day || '-'}</td>
-                                      <td className="px-6 py-4 text-slate-500">{item.time || '-'}</td>
-                                      <td className="px-6 py-4 font-medium text-slate-700">{item.class || '-'}</td>
-                                      <td className="px-6 py-4">{item.subject || '-'}</td>
+                                      <tr key={`schedule-${item.id}-${index}`} className="hover:bg-slate-50 transition-colors">
+                                      <td className="px-6 py-4 font-bold text-slate-800">{item.day}</td>
+                                      <td className="px-6 py-4 text-slate-500">{item.time}</td>
+                                      <td className="px-6 py-4 font-medium text-slate-700">{item.class}</td>
+                                      <td className="px-6 py-4">{item.subject}</td>
                                       <td className="px-6 py-4 text-slate-600">{item.teacherName || '-'}</td>
                                       <td className="px-6 py-4 text-right">
                                          <div className="flex justify-end gap-2">
@@ -2722,7 +2231,6 @@
                             </div>
                         </div>
                     )}
-
                     {activeSubTab === 'sekolah' && (
                     <div className="p-4 md:p-8 max-w-3xl">
                         <h3 className="font-bold text-xl text-slate-800 mb-8 flex items-center gap-2">
@@ -2751,7 +2259,6 @@
                                  <p className="text-xs text-slate-500 leading-relaxed">Masukkan URL gambar (JPG, PNG) agar logo sekolah tampil otomatis di rapor dan kop surat.</p>
                             </div>
                         </div>
-
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">Nama Sekolah</label>
@@ -2851,7 +2358,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div className="pt-6">
                                 <button className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-indigo-700 w-full md:w-auto shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
                                 <Save size={18} /> Simpan Perubahan
@@ -2860,7 +2366,6 @@
                         </div>
                     </div>
                     )}
-
                     {showModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-fade-in-down">
@@ -2905,7 +2410,6 @@
                                                     {(subjects || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                                 </datalist>
                                             </div>
-
                                             <div className="relative">
                                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-2">Tugas Tambahan</label>
                                                 <input 
@@ -2959,7 +2463,6 @@
                                                     <input className="w-full border p-3 rounded-xl" placeholder="Contoh: R.101" value={formData.room || ''} onChange={e => setFormData({...formData, room: e.target.value})} />
                                                 </div>
                                             </div>
-
                                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex justify-between">
                                                     <span>Waktu Pelajaran</span>
@@ -2983,7 +2486,6 @@
                                                     *Otomatis menghitung jam (1 JP = 40 mnt). Istirahat 10:30-10:50 dilompati.
                                                 </p>
                                             </div>
-
                                             <select className="w-full border p-3 rounded-xl bg-white" value={formData.class || ''} onChange={e => setFormData({...formData, class: e.target.value})}>
                                                 <option value="" disabled>Pilih Kelas</option>
                                                 {(classes || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -2999,7 +2501,6 @@
                                         </>
                                     )}
                                 </div>
-
                                 <div className="mt-8 flex gap-3 justify-end">
                                     <button onClick={() => setShowModal(false)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200">Batal</button>
                                     <button onClick={handleSave} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200">Simpan</button>
@@ -3007,7 +2508,6 @@
                             </div>
                         </div>
                     )}
-
                     {showClassStudentsModal && selectedClassData && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center modal-overlay p-4">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 md:p-8 animate-fade-in-down mx-4">
@@ -3057,7 +2557,6 @@
                             </div>
                         </div>
                     )}
-
                     {showDriveModal && selectedTeacherForDrive && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center modal-overlay p-4">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-fade-in-down mx-4">
@@ -3070,7 +2569,6 @@
                                     </div>
                                     <button onClick={() => setShowDriveModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
                                 </div>
-
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link Perangkat Ajar</label>
@@ -3110,12 +2608,10 @@
                             </div>
                         </div>
                     )}
-
                 </div>
                 </div>
             );
         };
-
         const App = () => {
             const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('sijaga_user')) || null);
             const [activeTab, setActiveTab] = useState(() => localStorage.getItem('sijaga_tab') || 'dashboard');
@@ -3129,11 +2625,9 @@
                     localStorage.removeItem('sijaga_user');
                 }
             }, [user]);
-
             useEffect(() => {
                 localStorage.setItem('sijaga_tab', activeTab);
             }, [activeTab]);
-
             // Listen for Firebase Init
             useEffect(() => {
                 if (window.firebaseData) {
@@ -3143,47 +2637,56 @@
                 window.addEventListener('firebase-ready', handleFirebaseReady);
                 return () => window.removeEventListener('firebase-ready', handleFirebaseReady);
             }, []);
-
+            
+            // --- MODIFIED HOOK: PREVENTS AUTO-WIPE ---
             const useFirestoreSyncedState = (collectionName, docId, initialValue) => {
                 const [data, setData] = useState(initialValue);
                 const [loading, setLoading] = useState(true);
-
                 useEffect(() => {
                     if (!firebaseReady || !window.firebaseData) return;
                     
-                    const { db, appId, setDoc, onSnapshot, doc } = window.firebaseData;
+                    const { db, appId, onSnapshot, doc } = window.firebaseData;
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'master_database', docId);
                     
                     const unsubscribe = onSnapshot(docRef, (docSnap) => {
                         if (docSnap.exists()) {
-                            setData(docSnap.data().items);
+                            // If doc exists, use it. Ensure it's not undefined.
+                            const cloudData = docSnap.data().items;
+                            setData(cloudData || initialValue);
                         } else {
-                            setDoc(docRef, { items: initialValue }, { merge: true });
+                            // SAFE: If doc missing, use LOCAL initial value. DO NOT WRITE to cloud yet.
+                            // This prevents overwriting existing data if connection is flaky.
+                            console.log(`[Info] Dokumen ${docId} belum ada/tidak terbaca. Menggunakan default lokal.`);
+                            setData(initialValue);
                         }
                         setLoading(false);
-                    }, (err) => console.error("Firestore Error:", err));
-
+                    }, (err) => {
+                        console.error("Firestore Error:", err);
+                        // Safe fallback on error
+                        setData(initialValue);
+                        setLoading(false);
+                    });
                     return () => unsubscribe();
                 }, [firebaseReady, docId]);
-
+                
                 const updateData = async (newValue) => {
-                    // Update lokal secara optimistik untuk responsivitas UI
-                    // newValue bisa berupa fungsi update (prev => ...) atau nilai langsung
                     const valueToStore = newValue instanceof Function ? newValue(data) : newValue;
                     setData(valueToStore); 
-
                     if (!firebaseReady) return;
+                    
+                    // Only write when user explicitly updates something
                     const { db, appId, setDoc, doc } = window.firebaseData;
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'master_database', docId);
                     try {
                         await setDoc(docRef, { items: valueToStore });
                     } catch (e) {
                         console.error("Save failed", e);
+                        // Optional: showToast here if you want to notify save failure
                     }
                 };
-
                 return [data, updateData, loading];
             };
+            // ---------------------------------------------
 
             const [teachers, setTeachers] = useFirestoreSyncedState('master_data', 'teachers', INITIAL_TEACHERS);
             const [students, setStudents] = useFirestoreSyncedState('master_data', 'students', INITIAL_STUDENTS);
@@ -3200,15 +2703,12 @@
             const [teacherDriveLinks, setTeacherDriveLinks] = useFirestoreSyncedState('master_data', 'teacherDriveLinks', INITIAL_DRIVE_LINKS);
             const [schoolConfig, setSchoolConfig] = useFirestoreSyncedState('master_data', 'schoolConfig', INITIAL_SCHOOL_CONFIG);
             const [schoolDocs, setSchoolDocs] = useFirestoreSyncedState('master_data', 'schoolDocs', INITIAL_SCHOOL_DOCS);
-
             const [toast, setToast] = useState(null);
             const [confirm, setConfirm] = useState(null);
-
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 setTimeout(() => setToast(null), 3000);
             };
-
             const showConfirm = (message, onConfirm) => {
                 setConfirm({
                     message,
@@ -3219,23 +2719,18 @@
                     onCancel: () => setConfirm(null)
                 });
             };
-
             const handleLogout = () => {
                 setUser(null);
                 setActiveTab('dashboard');
                 localStorage.removeItem('sijaga_user');
             };
-
             const currentTeacher = user?.role === 'guru' ? (teachers || []).find(t => t.name === user.name) : null; 
             const isPiket = currentTeacher?.status && currentTeacher.status.includes('Guru Piket');
             const isWaliKelas = currentTeacher?.status && currentTeacher.status.includes('Wali Kelas');
             const managedClass = isWaliKelas ? (classes || []).find(c => c.wali === user?.name)?.name : null;
-
             const isManagement = user?.role === 'admin' || 
                                  user?.role === 'kepala_sekolah' || 
                                  (currentTeacher?.status && (currentTeacher.status.includes('Kepala Sekolah') || currentTeacher.status.includes('Wakil Kepala Sekolah')));
-
-
             if (!user) {
                 return (
                     <>
@@ -3249,7 +2744,6 @@
                     </>
                 );
             }
-
             return (
                 <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
                     <Sidebar 
@@ -3296,7 +2790,6 @@
                                 </div>
                             </div>
                         </header>
-
                         <main className="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar bg-slate-50/50">
                             {activeTab === 'dashboard' && (
                                 <Dashboard 
@@ -3333,7 +2826,6 @@
                                     jurnals={jurnals}
                                     setJurnals={setJurnals}
                                     showToast={showToast}
-                                    showConfirm={showConfirm}
                                 />
                             )}
                             {activeTab === 'drive-guru' && (
@@ -3403,13 +2895,11 @@
                             {activeTab === 'jadwal' && <JadwalGuru user={user} schedules={schedules} />}
                         </main>
                     </div>
-
                     <ToastContainer toast={toast} />
                     <ConfirmModal confirm={confirm} />
                 </div>
             );
         };
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
