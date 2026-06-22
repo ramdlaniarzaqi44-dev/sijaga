@@ -27,16 +27,15 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         window.initFirebase = async () => {
-            // --- KONFIGURASI FIREBASE ANDA ---
-            const firebaseConfig = {
-                const firebaseConfig = {
-  apiKey: "AIzaSyBddZVSGYw-D-8qvPd-My8c3mMDWo_OZSA",
-  authDomain: "jurnalaltaz.firebaseapp.com",
-  projectId: "jurnalaltaz",
-  storageBucket: "jurnalaltaz.firebasestorage.app",
-  messagingSenderId: "658444272373",
-  appId: "1:658444272373:web:909b7a424bbf7aaa763bbc"
-            };
+         // --- KONFIGURASI FIREBASE ANDA ---
+const firebaseConfig = {
+    apiKey: "AIzaSyBddZVSGYw-D-8qvPd-My8c3mMDWo_OZSA",
+    authDomain: "jurnalaltaz.firebaseapp.com",
+    projectId: "jurnalaltaz",
+    storageBucket: "jurnalaltaz.firebasestorage.app",
+    messagingSenderId: "658444272373",
+    appId: "1:658444272373:web:909b7a424bbf7aaa763bbc"
+};
             const appId = 'jurnalaltaz';
             let app;
             
